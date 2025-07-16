@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 
 interface Note {
@@ -12,7 +12,7 @@ const Notes = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [content, setContent] = useState('');
   const [patientId, setPatientId] = useState<number | ''>('');
-  const [error, setError] = useState('');
+  const [_error, setError] = useState('');
 
   const fetchNotes = async (id: number) => {
     try {

@@ -1,15 +1,15 @@
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 const Sidebar = () => {
   return (
-    <div className="w-64 bg-gray-800 text-white h-screen p-4 fixed">
-      <h2 className="text-2xl font-bold mb-8">SanaLink</h2>
-      <nav className="flex flex-col gap-4">
-        <Link to="/dashboard" className="hover:text-blue-300">Dashboard</Link>
-        <Link to="/patients" className="hover:text-blue-300">Patients</Link>
-        <Link to="/appointments" className="hover:text-blue-300">Appointments</Link>
-        <Link to="/notes" className="hover:text-blue-300">Notes</Link>
-        <Link to="/prescriptions" className="hover:text-blue-300">Prescriptions</Link>
+    <div className="bg-white w-64 h-full p-4 shadow">
+      <div className="text-blue-600 font-bold text-xl mb-6">SanaLink</div>
+      <nav className="flex flex-col space-y-4">
+        <NavLink to="/dashboard">📊 Dashboard</NavLink>
+        <NavLink to="/patients">🧍 Patients</NavLink>
+        <NavLink to="/appointments">🗓️ Appointments</NavLink>
+        <NavLink to="/notes">📝 Notes</NavLink> {/* ← Add this */}
+        <NavLink to="/prescriptions">💊 Prescriptions</NavLink>
       </nav>
     </div>
   );

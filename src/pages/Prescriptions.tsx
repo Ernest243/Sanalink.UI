@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas-pro';
 
 interface Prescription {
   id: number;
@@ -62,30 +60,6 @@ const Prescriptions = () => {
     }
   };
 
-  const handleDownload = async (id: number) => {
-    const element = document.getElementById(`prescription-${id}`);
-    if (!element) return;
-
-    try {
-        const canvas = await html2canvas(element, {
-            scale: 2, // optional for higher resolution
-            useCORS: true,
-            backgroundColor: '#ffffff' // ensure white background
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'px',
-            format: [canvas.width, canvas.height],
-        });
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`prescription-${id}.pdf`);
-    } catch (err) {
-        console.error('PDF generation failed:', err);
-    }
-  };
-
   return (
     <div className="p-6 bg-white rounded shadow">
       <h2 className="text-xl font-bold mb-4">Prescriptions</h2>
@@ -137,7 +111,7 @@ const Prescriptions = () => {
         <p>No prescriptions available yet.</p>
       ) : (
         <ul className="space-y-3">
-          {prescriptions.map((p, index) => (
+          {prescriptions.map((p) => (
             <li key={p.id} id={`prescription-${p.id}`} className="p-6 max-w-md bg-white border rounded shadow space-y-2">
               <p><strong>Medication:</strong> {p.medicationName}</p>
               <p><strong>Dosage:</strong> {p.dosage}</p>

@@ -1,100 +1,23 @@
-import axios from 'axios';
-import { useEffect, useState } from 'react';
-import {
-  Chart as ChartJS,
-  LineElement,
-  PointElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-// Register Chart.js components
-ChartJS.register(LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend);
+interface AppointmentChartData {
+  name: string;
+  value: number;
+}
 
-const AppointmentsChart = () => {
-  const [chartData, setChartData] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('/api/analytics/appointments-per-day', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-
-        const { dates, counts } = response.data;
-
-        setChartData({
-          labels: dates,
-          datasets: [
-            {
-              label: 'Appointments',
-              data: counts,
-              fill: false,
-              tension: 0.3,
-              borderColor: '#3b82f6',         // Blue line
-              backgroundColor: '#3b82f6',     // Blue points
-              borderWidth: 2,
-              pointRadius: 4,
-              pointHoverRadius: 6
-            }
-          ]
-        });
-      } catch (err) {
-        console.error('Error fetching appointment chart data: ', err);
-      }
-    };
-
-    fetchChartData();
-  }, []);
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top' as const
-      },
-      tooltip: {
-        mode: 'index' as const,
-        intersect: false
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        suggestedMax: 5,
-        ticks: {
-          stepSize: 1
-        },
-        grid: {
-          drawBorder: false,
-          color: '#E5E7EB'
-        }
-      },
-      x: {
-        grid: {
-          display: false
-        }
-      }
-    }
-  };
-
+export default function AppointmentsChart({ data }: { data: AppointmentChartData[] }) {
   return (
-    <div className="bg-white p-6 rounded shadow">
-      <h3 className="text-lg font-semibold mb-2">Appointments Over Time</h3>
-      {chartData ? (
-        <Line data={chartData} options={options} />
-      ) : (
-        <p>Loading chart...</p>
-      )}
+    <div>
+      <h3 className="text-lg font-semibold mb-2">Appointments by Status</h3>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={data} barCategoryGap="30%">
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis allowDecimals={false} />
+          <Tooltip />
+          <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
-};
-
-export default AppointmentsChart;
+}

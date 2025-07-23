@@ -5,6 +5,8 @@ import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Notes from './pages/Notes';
 import Prescriptions from './pages/Prescriptions';
+import AddPatient from './pages/AddPatient';
+import BookAppointment from './pages/BookAppointment';
 
 const App = () => {
   return (
@@ -17,6 +19,8 @@ const App = () => {
         <Route index element={<Dashboard />} />
         <Route path="notes" element={<Notes />} /> {/* ✅ Fixed */}
         <Route path="prescriptions" element={<Prescriptions />} />
+        <Route path="patients" element={<AddPatient />} />
+        <Route path="appointments" element={<BookAppointment />} />
       </Route>
     </Routes>
   );

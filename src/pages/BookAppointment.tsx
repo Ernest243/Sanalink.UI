@@ -33,7 +33,7 @@ export default function BookAppointment() {
 
   const fetchPatients = async () => {
     try {
-      const res = await axios.get('http://localhost:5189/api/Patient', {
+      const res = await axios.get('/Patient', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPatients(res.data);
@@ -44,7 +44,7 @@ export default function BookAppointment() {
 
   const fetchAppointments = async () => {
     try {
-      const res = await axios.get('http://localhost:5189/api/Appointment', {
+      const res = await axios.get('/Appointment', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAppointments(res.data);
@@ -61,7 +61,7 @@ export default function BookAppointment() {
     try {
       setSuccess(false);
       setError('');
-      await axios.post('http://localhost:5189/api/Appointment', {
+      await axios.post('/Appointment', {
         ...form,
         doctorId,
       }, {
@@ -90,7 +90,7 @@ export default function BookAppointment() {
     if (!selectedAppointment) return;
 
     try {
-      await axios.put(`http://localhost:5189/api/Appointment/${selectedAppointment.id}`, {
+      await axios.put(`/Appointment/${selectedAppointment.id}`, {
         ...selectedAppointment,
         ...editForm,
       }, {
@@ -113,7 +113,7 @@ export default function BookAppointment() {
     if (!selectedAppointment) return;
 
     try {
-      await axios.delete(`http://localhost:5189/api/Appointment/${selectedAppointment.id}`, {
+      await axios.delete(`/Appointment/${selectedAppointment.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

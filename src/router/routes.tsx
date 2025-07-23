@@ -3,6 +3,8 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Dashboard from '../pages/Dashboard';
 import MainLayout from '../layouts/MainLayout';
+import AddPatient from '../pages/AddPatient';
+
 
 const RoutesComponent = () => {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -48,6 +50,23 @@ const RoutesComponent = () => {
               </MainLayout>
             }
           />
+          <Route
+            path="/patients/add"
+            element={
+              <MainLayout>
+                <AddPatient />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/dashboard/patients"
+            element={
+              <MainLayout>
+                <div>Patients List Page</div>
+              </MainLayout>
+            }
+          />
+
         </>
       )}
     </Routes>

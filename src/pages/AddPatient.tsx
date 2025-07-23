@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import axios from '../api/axios';
 
 export default function AddPatient() {
   const [form, setForm] = useState({
@@ -23,7 +23,7 @@ export default function AddPatient() {
 
       const token = localStorage.getItem('token'); // or however you store it
 
-      await axios.post('http://localhost:5189/api/Patient', form, {
+      await axios.post('/Patient', form, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

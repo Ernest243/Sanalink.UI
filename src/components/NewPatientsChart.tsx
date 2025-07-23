@@ -9,7 +9,7 @@ export default function NewPatientsChart() {
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5189/api/Patient/registrations/last7days', {
+      const res = await axios.get('/Patient/registrations/last7days', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setData(res.data);

@@ -34,11 +34,11 @@ export default function Dashboard() {
       staffRes,
       recentRes
     ] = await Promise.all([
-      axios.get("http://localhost:5189/api/Patient", config),
-      axios.get("http://localhost:5189/api/Appointment", config),
-      axios.get("http://localhost:5189/api/Prescriptions", config),
-      axios.get("http://localhost:5189/api/Auth/active-staff-count", config),
-      axios.get("http://localhost:5189/api/Patient/recent", config),
+      axios.get("/Patient", config),
+      axios.get("/Appointment", config),
+      axios.get("/Prescriptions", config),
+      axios.get("/Auth/active-staff-count", config),
+      axios.get("/Patient/recent", config),
     ]);
 
     const appointments = apptRes.data;

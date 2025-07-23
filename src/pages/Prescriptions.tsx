@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '../api/axios';
 
 interface Prescription {
   id: number;
@@ -20,7 +20,7 @@ const Prescriptions = () => {
   const fetchPrescriptions = async (id: number) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:5189/api/Prescriptions/patient/${id}`, {
+      const res = await axios.get(`/Prescriptions/patient/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPrescriptions(Array.isArray(res.data) ? res.data : []);
@@ -45,7 +45,7 @@ const Prescriptions = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        'http://localhost:5189/api/Prescriptions',
+        '/Prescriptions',
         { patientId, medicationName, dosage, instructions },
         {
           headers: { Authorization: `Bearer ${token}` },

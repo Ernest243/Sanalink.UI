@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import axios from '../api/axios';
 
 interface Note {
   id: number;
@@ -17,7 +17,7 @@ const Notes = () => {
   const fetchNotes = async (id: number) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:5189/api/Notes/patient/${id}`, {
+      const res = await axios.get(`/Notes/patient/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -46,7 +46,7 @@ const Notes = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        'http://localhost:5189/api/notes',
+        '/notes',
         { patientId, content },
         {
           headers: {

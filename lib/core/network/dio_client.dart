@@ -8,8 +8,8 @@ part 'dio_client.g.dart';
 @riverpod
 Dio dio(Ref ref) {
   final baseUrl = kReleaseMode
-      ? 'https://sanalink-ui.vercel.app/api/v1/'
-      : 'http://localhost:5173/api/v1/';
+      ? 'https://sanalink-api.onrender.com/api/v1/'
+      : 'http://localhost:5189/api/v1/';
 
   final dio = Dio(
     BaseOptions(

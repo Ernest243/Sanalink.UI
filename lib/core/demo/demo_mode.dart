@@ -1,1 +1,1 @@
-const bool isDemoMode = true;
+const bool isDemoMode = false;

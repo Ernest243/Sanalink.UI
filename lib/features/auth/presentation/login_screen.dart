@@ -1,8 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sanalink/core/auth/auth_service.dart';
+import 'package:sanalink/core/network/dio_client.dart';
 import 'package:sanalink/theme/app_theme.dart';
-import 'dart:convert';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -13,8 +14,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'doctor@sanalink.com');
-  final _passwordController = TextEditingController(text: 'password123');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -31,42 +32,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await Future.delayed(const Duration(milliseconds: 800));
+      final dio = ref.read(dioProvider);
+      final response = await dio.post(
+        'Auth/login',
+        data: {
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text,
+        },
+      );
 
-      String role = 'Doctor';
-      if (_emailController.text.contains('admin')) role = 'Admin';
-      if (_emailController.text.contains('nurse')) role = 'Nurse';
-
-      // Ce payload doit contenir TOUS les champs requis par StaffUserModel
-      // Si un modèle utilise 'id' comme String, mets "1". S'il utilise int, mets 1.
-      final payload = {
-        "id": "1", // Souvent un String (UUID) dans les modèles
-        "email": _emailController.text,
-        "fullName": "Utilisateur Démo",
-        "role": role,
-        "facilityId": "1",
-        "token": "mock_token_string", // Parfois requis par le modèle
-        "exp": DateTime.now().add(const Duration(hours: 4)).millisecondsSinceEpoch ~/ 1000,
-      };
-
-      final String header = base64UrlEncode(utf8.encode(jsonEncode({"alg": "HS256", "typ": "JWT"})));
-      final String body = base64UrlEncode(utf8.encode(jsonEncode(payload)));
-      final String signature = base64UrlEncode(utf8.encode('demo-signature'));
-
-      final mockToken = '$header.$body.$signature';
-
-      await ref.read(authServiceProvider.notifier).login(mockToken);
-
-    } catch (e) {
-      debugPrint('DÉTAIL ERREUR DÉMO: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur de mapping : Un champ requis est manquant ou nul.'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
+      final token = response.data['token'] as String;
+      await ref.read(authServiceProvider.notifier).login(token);
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final message = e.response?.statusCode == 401
+          ? 'Email ou mot de passe incorrect.'
+          : 'Erreur de connexion. Vérifiez votre réseau.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: AppTheme.errorColor),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -94,15 +78,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       'Sanalink',
                       style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                     ),
-                    const Text('Mode Démo Activé', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 32),
                     TextFormField(
                       controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        labelText: 'Email (admin, doctor, nurse)',
+                        labelText: 'Email',
                         prefixIcon: const Icon(Icons.email_outlined),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Email requis' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -117,6 +103,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Mot de passe requis' : null,
                     ),
                     const SizedBox(height: 32),
                     SizedBox(
@@ -129,7 +117,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: _isLoading ? null : _handleLogin,
                         child: _isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Se Connecter (Démo)', style: TextStyle(fontSize: 16)),
+                            : const Text('Se Connecter', style: TextStyle(fontSize: 16)),
                       ),
                     ),
                   ],

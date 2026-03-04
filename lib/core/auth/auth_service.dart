@@ -71,9 +71,10 @@ class AuthService extends _$AuthService {
     final email = decoded['email'] ?? 'demo@sanalink.com';
 
     return StaffUserModel(
-      id: "1",             // String (Texte)
+      id: "1",
       email: email,
-      fullName: "Utilisateur Démo ($role)",
+      firstName: "Utilisateur",
+      lastName: "Démo ($role)",
       role: role,
       facilityId: 1,
     );

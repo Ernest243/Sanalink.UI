@@ -14,15 +14,19 @@ int? _parseInt(dynamic value) {
 @freezed
 abstract class StaffUserModel with _$StaffUserModel {
   const factory StaffUserModel({
-
     @JsonKey(name: 'sub') required String id,
     required String email,
     required String role,
-    required String fullName,
+    required String firstName,
+    required String lastName,
     String? department,
     @JsonKey(fromJson: _parseInt) int? facilityId,
   }) = _StaffUserModel;
 
   factory StaffUserModel.fromJson(Map<String, dynamic> json) =>
       _$StaffUserModelFromJson(json);
+}
+
+extension StaffUserModelX on StaffUserModel {
+  String get fullName => '$firstName $lastName'.trim();
 }

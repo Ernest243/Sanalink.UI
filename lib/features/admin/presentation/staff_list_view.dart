@@ -156,7 +156,8 @@ class StaffRegistrationDialog extends ConsumerStatefulWidget {
 class _StaffRegistrationDialogState
     extends ConsumerState<StaffRegistrationDialog> {
   final _formKey = GlobalKey<FormState>();
-  String _fullName = '';
+  String _firstName = '';
+  String _lastName = '';
   String _email = '';
   String _password = '';
   String _role = 'Doctor';
@@ -192,8 +193,14 @@ class _StaffRegistrationDialogState
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Nom Complet'),
-                onChanged: (v) => _fullName = v,
+                decoration: const InputDecoration(labelText: 'Prénom'),
+                onChanged: (v) => _firstName = v,
+                validator: (v) => v?.isEmpty ?? true ? 'Requis' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Nom de famille'),
+                onChanged: (v) => _lastName = v,
                 validator: (v) => v?.isEmpty ?? true ? 'Requis' : null,
               ),
               const SizedBox(height: 16),
@@ -211,7 +218,7 @@ class _StaffRegistrationDialogState
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _role,
+                initialValue: _role,
                 decoration: const InputDecoration(labelText: 'Rôle'),
                 items: _roles
                     .map((r) => DropdownMenuItem(value: r, child: Text(r)))
@@ -221,7 +228,7 @@ class _StaffRegistrationDialogState
               if (_role == 'Doctor') ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _department ?? _departments.first,
+                  initialValue: _department ?? _departments.first,
                   decoration: const InputDecoration(
                     labelText: 'Département / Spécialité',
                   ),
@@ -248,7 +255,8 @@ class _StaffRegistrationDialogState
   void _submit() async {
     if (_formKey.currentState!.validate()) {
       final request = StaffRegistrationRequest(
-        fullName: _fullName,
+        firstName: _firstName,
+        lastName: _lastName,
         email: _email,
         password: _password,
         role: _role,

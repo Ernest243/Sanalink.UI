@@ -5,7 +5,7 @@ import 'package:sanalink/core/auth/auth_service.dart';
 
 part 'dio_client.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Dio dio(Ref ref) {
   final baseUrl = kReleaseMode
       ? 'https://sanalink-api.onrender.com/api/v1/'

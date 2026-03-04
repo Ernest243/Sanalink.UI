@@ -111,7 +111,7 @@ class _FacilityCreateDialogState extends ConsumerState<_FacilityCreateDialog> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _type,
+              initialValue: _type,
               items: [
                 'Hôpital',
                 'Clinique',

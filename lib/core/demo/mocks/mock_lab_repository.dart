@@ -36,4 +36,10 @@ class MockLabRepository implements LabRepository {
       );
     }
   }
+
+  @override
+  Future<List<LabOrderModel>> getLabOrdersByPatient(int patientId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return _store.labOrders.where((o) => o.patientId == patientId).toList();
+  }
 }

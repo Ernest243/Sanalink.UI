@@ -42,4 +42,13 @@ class MockPharmacyRepository implements PharmacyRepository {
     await Future.delayed(const Duration(milliseconds: 300));
     return _store.dispenses;
   }
+
+  @override
+  Future<List<PrescriptionModel>> getPrescriptionsByPatient(
+      int patientId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return _store.prescriptions
+        .where((p) => p.patientId == patientId)
+        .toList();
+  }
 }

@@ -30,6 +30,14 @@ class LabRepository {
   Future<void> updateStatus(int id, String status) async {
     await _dio.put('/LabOrder/$id/status', data: {'status': status});
   }
+
+  /// Récupère les demandes de labo pour un patient
+  Future<List<LabOrderModel>> getLabOrdersByPatient(int patientId) async {
+    final response = await _dio.get('LabOrder/patient/$patientId');
+    return (response.data as List)
+        .map((e) => LabOrderModel.fromJson(e))
+        .toList();
+  }
 }
 
 @riverpod

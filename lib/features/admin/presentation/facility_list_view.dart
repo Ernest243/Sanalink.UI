@@ -46,6 +46,11 @@ class FacilityListView extends ConsumerWidget {
       itemCount: facilities.length,
       itemBuilder: (context, index) {
         final f = facilities[index];
+        final subtitle = [
+          if (f.phone != null) f.phone!,
+          if (f.email != null) f.email!,
+          if (f.address != null) f.address!,
+        ].join('\n');
         return Card(
           child: ListTile(
             leading: const Icon(
@@ -57,8 +62,8 @@ class FacilityListView extends ConsumerWidget {
               f.name,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text('${f.type}\n${f.address}'),
-            isThreeLine: true,
+            subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
+            isThreeLine: subtitle.contains('\n'),
           ),
         );
       },
@@ -84,8 +89,9 @@ class _FacilityCreateDialog extends ConsumerStatefulWidget {
 class _FacilityCreateDialogState extends ConsumerState<_FacilityCreateDialog> {
   final _formKey = GlobalKey<FormState>();
   String _name = '';
-  String _address = '';
-  String _type = 'Hôpital';
+  String? _address;
+  String? _phone;
+  String? _email;
 
   @override
   Widget build(BuildContext context) {
@@ -105,21 +111,18 @@ class _FacilityCreateDialogState extends ConsumerState<_FacilityCreateDialog> {
             ),
             const SizedBox(height: 16),
             TextFormField(
-              decoration: const InputDecoration(labelText: 'Adresse'),
-              onChanged: (v) => _address = v,
-              validator: (v) => v?.isEmpty ?? true ? 'Requis' : null,
+              decoration: const InputDecoration(labelText: 'Adresse (optionnel)'),
+              onChanged: (v) => _address = v.isEmpty ? null : v,
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _type,
-              items: [
-                'Hôpital',
-                'Clinique',
-                'Centre de Santé',
-                'Pharmacie',
-              ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-              onChanged: (v) => _type = v!,
-              decoration: const InputDecoration(labelText: 'Type'),
+            TextFormField(
+              decoration: const InputDecoration(labelText: 'Téléphone (optionnel)'),
+              onChanged: (v) => _phone = v.isEmpty ? null : v,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              decoration: const InputDecoration(labelText: 'Email (optionnel)'),
+              onChanged: (v) => _email = v.isEmpty ? null : v,
             ),
           ],
         ),
@@ -134,12 +137,23 @@ class _FacilityCreateDialogState extends ConsumerState<_FacilityCreateDialog> {
     );
   }
 
-  void _submit() async {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      await ref
-          .read(facilityListProvider.notifier)
-          .createFacility(_name, _address, _type);
-      if (mounted) Navigator.pop(context);
+      try {
+        await ref
+            .read(facilityListProvider.notifier)
+            .createFacility(_name, address: _address, phone: _phone, email: _email);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 }

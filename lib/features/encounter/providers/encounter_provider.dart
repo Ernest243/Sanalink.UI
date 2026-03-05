@@ -33,6 +33,21 @@ class EncounterNotifier extends _$EncounterNotifier {
     return resolvedEncounters;
   }
 
+  /// Crée une nouvelle consultation.
+  Future<void> createEncounter(
+    int patientId,
+    String chiefComplaint, {
+    String? vitals,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref
+          .read(encounterRepositoryProvider)
+          .createEncounter(patientId, chiefComplaint, vitals: vitals);
+      return _fetchAndResolveEncounters();
+    });
+  }
+
   /// Met à jour le statut d'une consultation.
   Future<void> updateStatus(int encounterId, String newStatus) async {
     final repository = ref.read(encounterRepositoryProvider);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sanalink/core/auth/auth_service.dart';
 import 'package:sanalink/features/admin/providers/admin_providers.dart';
 import 'package:sanalink/models/staff_user_model.dart';
 import 'package:sanalink/models/staff_registration_request.dart';
@@ -162,8 +163,6 @@ class _StaffRegistrationDialogState
   String _password = '';
   String _role = 'Doctor';
   String? _department;
-  final int _facilityId = 1; // Mocké pour le moment
-
   final List<String> _roles = [
     'Admin',
     'Doctor',
@@ -225,19 +224,17 @@ class _StaffRegistrationDialogState
                     .toList(),
                 onChanged: (v) => setState(() => _role = v!),
               ),
-              if (_role == 'Doctor') ...[
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _department ?? _departments.first,
-                  decoration: const InputDecoration(
-                    labelText: 'Département / Spécialité',
-                  ),
-                  items: _departments
-                      .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                      .toList(),
-                  onChanged: (v) => _department = v,
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _department,
+                decoration: const InputDecoration(
+                  labelText: 'Département (optionnel)',
                 ),
-              ],
+                items: _departments
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                    .toList(),
+                onChanged: (v) => _department = v,
+              ),
             ],
           ),
         ),
@@ -252,20 +249,33 @@ class _StaffRegistrationDialogState
     );
   }
 
-  void _submit() async {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
+      final facilityId =
+          ref.read(authServiceProvider).value?.user?.facilityId ?? 1;
       final request = StaffRegistrationRequest(
         firstName: _firstName,
         lastName: _lastName,
         email: _email,
         password: _password,
         role: _role,
-        facilityId: _facilityId,
-        department: _role == 'Doctor' ? _department : null,
+        facilityId: facilityId,
+        department: _department,
       );
 
-      await ref.read(staffListProvider.notifier).registerStaff(request);
-      if (mounted) Navigator.pop(context);
+      try {
+        await ref.read(staffListProvider.notifier).registerStaff(request);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 }

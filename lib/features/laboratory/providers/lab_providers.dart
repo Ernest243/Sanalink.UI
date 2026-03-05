@@ -5,6 +5,11 @@ import 'package:sanalink/models/lab_order_model.dart';
 part 'lab_providers.g.dart';
 
 @riverpod
+Future<List<LabOrderModel>> patientLabOrders(Ref ref, int patientId) {
+  return ref.watch(labRepositoryProvider).getLabOrdersByPatient(patientId);
+}
+
+@riverpod
 class LabOrderList extends _$LabOrderList {
   @override
   FutureOr<List<LabOrderModel>> build() {

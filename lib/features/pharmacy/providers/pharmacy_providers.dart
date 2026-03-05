@@ -6,6 +6,14 @@ import 'package:sanalink/models/pharmacy_dispense_model.dart';
 part 'pharmacy_providers.g.dart';
 
 @riverpod
+Future<List<PrescriptionModel>> patientPrescriptions(
+    Ref ref, int patientId) {
+  return ref
+      .watch(pharmacyRepositoryProvider)
+      .getPrescriptionsByPatient(patientId);
+}
+
+@riverpod
 class PendingPrescriptions extends _$PendingPrescriptions {
   @override
   FutureOr<List<PrescriptionModel>> build() {

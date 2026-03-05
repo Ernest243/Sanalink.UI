@@ -31,6 +31,15 @@ class PharmacyRepository {
         .map((e) => PharmacyDispenseModel.fromJson(e))
         .toList();
   }
+
+  /// Récupère les prescriptions d'un patient
+  Future<List<PrescriptionModel>> getPrescriptionsByPatient(
+      int patientId) async {
+    final response = await _dio.get('Prescriptions/patient/$patientId');
+    return (response.data as List)
+        .map((e) => PrescriptionModel.fromJson(e))
+        .toList();
+  }
 }
 
 @riverpod

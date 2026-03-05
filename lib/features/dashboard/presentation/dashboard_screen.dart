@@ -1,17 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sanalink/features/dashboard/providers/dashboard_providers.dart';
+import 'package:sanalink/models/encounter_model.dart';
 import 'package:sanalink/theme/app_theme.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final analyticsAsync = ref.watch(appointmentAnalyticsProvider);
+    final staffAsync = ref.watch(activeStaffCountProvider);
+    final encountesAsync = ref.watch(recentEncountersProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Tableau de bord',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              ref.invalidate(appointmentAnalyticsProvider);
+              ref.invalidate(activeStaffCountProvider);
+              ref.invalidate(recentEncountersProvider);
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -20,57 +37,15 @@ class DashboardScreen extends StatelessWidget {
           children: [
             Text(
               'Aperçu de la journée',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth > 1200
-                    ? 4
-                    : constraints.maxWidth > 800
-                    ? 3
-                    : 2;
-                return GridView.count(
-                  crossAxisCount: crossAxisCount,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.5,
-                  children: const [
-                    _StatCard(
-                      title: 'Consultations Aujourd\'hui',
-                      value: '142',
-                      icon: Icons.calendar_month,
-                      color: AppTheme.primaryColor,
-                      trend: '+12%',
-                    ),
-                    _StatCard(
-                      title: 'Patients en attente',
-                      value: '18',
-                      icon: Icons.people_outline,
-                      color: Colors.orange,
-                      trend: '-5%',
-                    ),
-                    _StatCard(
-                      title: 'Prescriptions actives',
-                      value: '84',
-                      icon: Icons.medication,
-                      color: Colors.purple,
-                      trend: '+2%',
-                    ),
-                    _StatCard(
-                      title: 'Urgences',
-                      value: '3',
-                      icon: Icons.warning_amber_rounded,
-                      color: AppTheme.errorColor,
-                      trend: '0%',
-                    ),
-                  ],
-                );
-              },
+            analyticsAsync.when(
+              data: (analytics) => _buildStatsGrid(context, analytics),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, __) => _buildStatsGrid(
+                  context, AppointmentAnalytics.empty),
             ),
             const SizedBox(height: 32),
             Row(
@@ -85,30 +60,33 @@ class DashboardScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Rendez-vous récents',
+                            'Consultations récentes',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Divider(),
-                          _buildRecentAppointmentTile(
-                            'Dr. Andy',
-                            'Jean willy',
-                            '09:00 AM',
-                            true,
-                          ),
-                          _buildRecentAppointmentTile(
-                            'Dr. Elie',
-                            'Marie Ange',
-                            '10:30 AM',
-                            false,
-                          ),
-                          _buildRecentAppointmentTile(
-                            'Dr. Omar',
-                            'Louis Kanga',
-                            '11:15 AM',
-                            true,
+                          encountesAsync.when(
+                            data: (encounters) => encounters.isEmpty
+                                ? const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Text('Aucune consultation trouvée.'),
+                                  )
+                                : Column(
+                                    children: encounters
+                                        .map((e) =>
+                                            _buildEncounterTile(e))
+                                        .toList(),
+                                  ),
+                            loading: () => const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: CircularProgressIndicator(),
+                            ),
+                            error: (_, __) => const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text('Impossible de charger les consultations.'),
+                            ),
                           ),
                         ],
                       ),
@@ -125,28 +103,40 @@ class DashboardScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Activité du personnel',
+                            'Personnel actif',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Divider(),
-                          const ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue,
-                              child: Text('M'),
+                          staffAsync.when(
+                            data: (staff) => Column(
+                              children: [
+                                ListTile(
+                                  leading: const CircleAvatar(
+                                    backgroundColor: Colors.blue,
+                                    child: Icon(Icons.medical_services,
+                                        color: Colors.white, size: 18),
+                                  ),
+                                  title: Text('${staff.doctors} Médecin(s)'),
+                                  subtitle: const Text('Actif(s)'),
+                                ),
+                                ListTile(
+                                  leading: const CircleAvatar(
+                                    backgroundColor: Colors.green,
+                                    child: Icon(Icons.healing,
+                                        color: Colors.white, size: 18),
+                                  ),
+                                  title: Text('${staff.nurses} Infirmier(s)'),
+                                  subtitle: const Text('Actif(s)'),
+                                ),
+                              ],
                             ),
-                            title: Text('Dr. Andy'),
-                            subtitle: Text('En consultation'),
-                          ),
-                          const ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.green,
-                              child: Text('S'),
-                            ),
-                            title: Text('Dr. Elie'),
-                            subtitle: Text('Disponible'),
+                            loading: () => const Center(
+                                child: CircularProgressIndicator()),
+                            error: (_, __) =>
+                                const Text('Données indisponibles'),
                           ),
                         ],
                       ),
@@ -161,28 +151,76 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentAppointmentTile(
-    String dotor,
-    String patient,
-    String time,
-    bool isCompleted,
-  ) {
+  Widget _buildStatsGrid(
+      BuildContext context, AppointmentAnalytics analytics) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 1200
+            ? 4
+            : constraints.maxWidth > 800
+                ? 3
+                : 2;
+        return GridView.count(
+          crossAxisCount: crossAxisCount,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.5,
+          children: [
+            _StatCard(
+              title: 'Total Consultations',
+              value: '${analytics.totalAppointments}',
+              icon: Icons.calendar_month,
+              color: AppTheme.primaryColor,
+            ),
+            _StatCard(
+              title: 'Rendez-vous programmés',
+              value: '${analytics.scheduled}',
+              icon: Icons.people_outline,
+              color: Colors.orange,
+            ),
+            _StatCard(
+              title: 'Prescriptions actives',
+              value: '${analytics.totalPrescriptions}',
+              icon: Icons.medication,
+              color: Colors.purple,
+            ),
+            _StatCard(
+              title: 'Patients enregistrés',
+              value: '${analytics.totalPatients}',
+              icon: Icons.person_add_alt_1,
+              color: AppTheme.errorColor,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildEncounterTile(EncounterModel encounter) {
+    final isOpen = encounter.status == 'Open' || encounter.status == 'InProgress';
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isCompleted
-              ? Colors.green.withValues(alpha: 0.1)
-              : Colors.orange.withValues(alpha: 0.1),
+          color: isOpen
+              ? Colors.orange.withValues(alpha: 0.1)
+              : Colors.green.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
-          isCompleted ? Icons.check_circle : Icons.schedule,
-          color: isCompleted ? Colors.green : Colors.orange,
+          isOpen ? Icons.schedule : Icons.check_circle,
+          color: isOpen ? Colors.orange : Colors.green,
         ),
       ),
-      title: Text(patient, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text('$dotor • $time'),
+      title: Text(
+        encounter.patientName.isNotEmpty
+            ? encounter.patientName
+            : 'Patient #${encounter.patientId}',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text('${encounter.doctorName} • ${encounter.status}'),
       trailing: const Icon(Icons.chevron_right),
     );
   }
@@ -193,14 +231,12 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  final String trend;
 
   const _StatCard({
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
-    required this.trend,
   });
 
   @override
@@ -216,47 +252,25 @@ class _StatCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(color: Colors.grey),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: Colors.grey),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 Icon(icon, color: color),
               ],
             ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: trend.startsWith('+')
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    trend,
-                    style: TextStyle(
-                      color: trend.startsWith('+') ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sanalink/features/clinical/providers/clinical_providers.dart';
+import 'package:sanalink/features/laboratory/providers/lab_providers.dart';
+import 'package:sanalink/features/pharmacy/providers/pharmacy_providers.dart';
 import 'package:sanalink/models/encounter_model.dart';
 import 'package:sanalink/services/patient_resolver_service.dart';
-import 'package:sanalink/core/demo/demo_store.dart';
 import 'package:sanalink/theme/app_theme.dart';
 
 /// [PatientDossierView] est le composant central affichant l'historique clinique,
@@ -45,25 +46,26 @@ class PatientDossierView extends ConsumerWidget {
             ),
         ],
       ),
-      body: FutureBuilder<String>(
-        // On résout le nom du patient par son ID via le service dédié
+      body: FutureBuilder(
         future: ref
             .read(patientResolverServiceProvider.notifier)
-            .resolvePatientName(effectivePatientId),
+            .getPatient(effectivePatientId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final patientName =
-              snapshot.data ?? encounter?.patientName ?? 'Inconnu';
+          final patient = snapshot.data;
+          final patientName = patient?.fullName ??
+              encounter?.patientName ??
+              'Inconnu';
 
           return Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(context, patientName),
+                _buildHeader(context, patientName, patient?.dateOfBirth),
                 const SizedBox(height: 24),
                 Expanded(child: _buildTabs(context, ref, effectivePatientId)),
               ],
@@ -74,14 +76,11 @@ class PatientDossierView extends ConsumerWidget {
     );
   }
 
-  /// Construit l'en-tête du dossier avec les informations d'identité
-  /// extraites dynamiquement pour correspondre aux données du DemoStore.
-  Widget _buildHeader(BuildContext context, String patientName) {
-    // Dans la version réelle, on aurai l'objet patient.
-    // Ici on simule avec les données reçues ou par défaut.
-    final age = encounter != null
-        ? (DateTime.now().year - 1980)
-        : 44; // Fallback simuler
+  Widget _buildHeader(
+      BuildContext context, String patientName, DateTime? dateOfBirth) {
+    final age = dateOfBirth != null
+        ? DateTime.now().year - dateOfBirth.year
+        : null;
 
     return Card(
       elevation: 0,
@@ -111,7 +110,7 @@ class PatientDossierView extends ConsumerWidget {
                     children: [
                       const Icon(Icons.cake, size: 16, color: Colors.grey),
                       const SizedBox(width: 8),
-                      Text('$age ans'),
+                      Text(age != null ? '$age ans' : 'N/A'),
                       const SizedBox(width: 24),
                       const Icon(Icons.male, size: 16, color: Colors.grey),
                       const SizedBox(width: 8),
@@ -407,39 +406,42 @@ class PatientDossierView extends ConsumerWidget {
   Widget _buildLabTab(int patientId) {
     return Consumer(
       builder: (context, ref, child) {
-        // En mode démo, on utilise directement le store pour simplifier la vue
-        final orders = DemoStore.instance.labOrders
-            .where((o) => o.patientId == patientId)
-            .toList();
-
-        if (orders.isEmpty) {
-          return const Center(
-            child: Text('Aucun examen de laboratoire pour ce patient.'),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: orders.length,
-          itemBuilder: (context, index) {
-            final order = orders[index];
-            return ListTile(
-              leading: Icon(
-                order.status == 'Completed'
-                    ? Icons.check_circle
-                    : Icons.hourglass_empty,
-                color: order.status == 'Completed'
-                    ? Colors.green
-                    : Colors.orange,
-              ),
-              title: Text(order.testName),
-              subtitle: Text(
-                order.status == 'Completed'
-                    ? 'Résultat: ${order.result}'
-                    : 'En attente',
-              ),
-              trailing: Text('${order.createdAt.day}/${order.createdAt.month}'),
+        final ordersAsync = ref.watch(patientLabOrdersProvider(patientId));
+        return ordersAsync.when(
+          data: (orders) {
+            if (orders.isEmpty) {
+              return const Center(
+                child: Text('Aucun examen de laboratoire pour ce patient.'),
+              );
+            }
+            return ListView.builder(
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                return ListTile(
+                  leading: Icon(
+                    order.status == 'Completed'
+                        ? Icons.check_circle
+                        : Icons.hourglass_empty,
+                    color: order.status == 'Completed'
+                        ? Colors.green
+                        : Colors.orange,
+                  ),
+                  title: Text(order.testName),
+                  subtitle: Text(
+                    order.status == 'Completed'
+                        ? 'Résultat: ${order.result ?? "-"}'
+                        : 'En attente',
+                  ),
+                  trailing:
+                      Text('${order.createdAt.day}/${order.createdAt.month}'),
+                );
+              },
             );
           },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => const Center(
+              child: Text('Erreur lors du chargement des examens.')),
         );
       },
     );
@@ -449,30 +451,38 @@ class PatientDossierView extends ConsumerWidget {
   Widget _buildPrescriptionsTab(int patientId) {
     return Consumer(
       builder: (context, ref, child) {
-        final prescriptions = DemoStore.instance.prescriptions
-            .where((p) => p.patientId == patientId)
-            .toList();
-
-        if (prescriptions.isEmpty) {
-          return const Center(child: Text('Aucune prescription enregistrée.'));
-        }
-
-        return ListView.builder(
-          itemCount: prescriptions.length,
-          itemBuilder: (context, index) {
-            final p = prescriptions[index];
-            return ListTile(
-              leading: Icon(
-                p.status == 'Dispensed' ? Icons.medication : Icons.description,
-                color: p.status == 'Dispensed'
-                    ? AppTheme.primaryColor
-                    : Colors.grey,
-              ),
-              title: Text(p.medicationName),
-              subtitle: Text('${p.dosage} - ${p.status}'),
-              trailing: Text('${p.createdAt.day}/${p.createdAt.month}'),
+        final prescriptionsAsync =
+            ref.watch(patientPrescriptionsProvider(patientId));
+        return prescriptionsAsync.when(
+          data: (prescriptions) {
+            if (prescriptions.isEmpty) {
+              return const Center(
+                  child: Text('Aucune prescription enregistrée.'));
+            }
+            return ListView.builder(
+              itemCount: prescriptions.length,
+              itemBuilder: (context, index) {
+                final p = prescriptions[index];
+                return ListTile(
+                  leading: Icon(
+                    p.status == 'Dispensed'
+                        ? Icons.medication
+                        : Icons.description,
+                    color: p.status == 'Dispensed'
+                        ? AppTheme.primaryColor
+                        : Colors.grey,
+                  ),
+                  title: Text(p.medicationName),
+                  subtitle: Text('${p.dosage} - ${p.status}'),
+                  trailing:
+                      Text('${p.createdAt.day}/${p.createdAt.month}'),
+                );
+              },
             );
           },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => const Center(
+              child: Text('Erreur lors du chargement des prescriptions.')),
         );
       },
     );

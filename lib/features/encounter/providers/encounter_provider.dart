@@ -17,15 +17,15 @@ class EncounterNotifier extends _$EncounterNotifier {
     final repository = ref.read(encounterRepositoryProvider);
     final resolver = ref.read(patientResolverServiceProvider.notifier);
 
-    // 1. Récupération des données cliniques (sans les noms de patients) depuis l'API Core
+    // 1. Récupération des données cliniques depuis l'API
     final rawEncounters = await repository.getEncounters();
 
-    // 2. Le Join Pattern (Jointure des noms de patients via le Resolver Gateway)
+    // 2. Résolution des noms de patients uniquement si manquants
     final resolvedEncounters = await Future.wait(
       rawEncounters.map((enc) async {
-        final String fullName = await resolver.resolvePatientName(
-          enc.patientId,
-        );
+        if (enc.patientName.isNotEmpty) return enc;
+        final String fullName =
+            await resolver.resolvePatientName(enc.patientId);
         return enc.copyWith(patientName: fullName);
       }),
     );

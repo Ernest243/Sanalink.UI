@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sanalink/core/auth/auth_service.dart';
+import 'package:sanalink/core/network/dio_client.dart';
 import 'package:sanalink/features/encounter/providers/encounter_provider.dart';
 import 'package:sanalink/models/encounter_model.dart';
 
@@ -9,6 +13,8 @@ class EncounterListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final encountersState = ref.watch(encounterProvider);
+    final authState = ref.watch(authServiceProvider);
+    final role = authState.value?.user?.role;
 
     return Scaffold(
       appBar: AppBar(
@@ -46,6 +52,20 @@ class EncounterListView extends ConsumerWidget {
           ),
         ),
       ),
+      floatingActionButton: role == 'Doctor'
+          ? FloatingActionButton.extended(
+              onPressed: () => _showCreateDialog(context, ref),
+              label: const Text('Nouvelle consultation'),
+              icon: const Icon(Icons.add),
+            )
+          : null,
+    );
+  }
+
+  void _showCreateDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => const EncounterCreateDialog(),
     );
   }
 
@@ -254,6 +274,200 @@ class EncounterListView extends ConsumerWidget {
         DropdownMenuItem(value: 'Open', child: Text('Ouvert')),
         DropdownMenuItem(value: 'InProgress', child: Text('En cours')),
         DropdownMenuItem(value: 'Closed', child: Text('Terminé')),
+      ],
+    );
+  }
+}
+
+class EncounterCreateDialog extends ConsumerStatefulWidget {
+  const EncounterCreateDialog({super.key});
+
+  @override
+  ConsumerState<EncounterCreateDialog> createState() =>
+      _EncounterCreateDialogState();
+}
+
+class _EncounterCreateDialogState extends ConsumerState<EncounterCreateDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _searchController = TextEditingController();
+  final _complaintController = TextEditingController();
+  final _vitalsController = TextEditingController();
+
+  Timer? _debounce;
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _searching = false;
+  Map<String, dynamic>? _selectedPatient;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    _complaintController.dispose();
+    _vitalsController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() => _searchResults = []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 400), () async {
+      setState(() => _searching = true);
+      try {
+        final dio = ref.read(dioProvider);
+        final response = await dio.get(
+          'Patient/search',
+          queryParameters: {'query': query.trim()},
+        );
+        final data = response.data as List;
+        setState(() {
+          _searchResults = data.cast<Map<String, dynamic>>();
+          _searching = false;
+        });
+      } catch (_) {
+        setState(() => _searching = false);
+      }
+    });
+  }
+
+  void _selectPatient(Map<String, dynamic> patient) {
+    setState(() {
+      _selectedPatient = patient;
+      _searchResults = [];
+      _searchController.clear();
+    });
+  }
+
+  void _clearPatient() {
+    setState(() => _selectedPatient = null);
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedPatient == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez sélectionner un patient.')),
+      );
+      return;
+    }
+
+    final patientId = _selectedPatient!['id'] as int;
+    final chiefComplaint = _complaintController.text.trim();
+    final vitals = _vitalsController.text.trim().isEmpty
+        ? null
+        : _vitalsController.text.trim();
+
+    try {
+      await ref
+          .read(encounterProvider.notifier)
+          .createEncounter(patientId, chiefComplaint, vitals: vitals);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  String _patientDisplayName(Map<String, dynamic> p) {
+    final first = p['firstName'] ?? p['first_name'] ?? '';
+    final last = p['lastName'] ?? p['last_name'] ?? '';
+    final name = '$first $last'.trim();
+    return name.isNotEmpty ? name : (p['name'] ?? 'Patient #${p['id']}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nouvelle consultation'),
+      content: SizedBox(
+        width: 480,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_selectedPatient != null)
+                  Chip(
+                    label: Text(_patientDisplayName(_selectedPatient!)),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: _clearPatient,
+                  )
+                else ...[
+                  TextFormField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      labelText: 'Rechercher un patient',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: _onSearchChanged,
+                  ),
+                  if (_searching)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_searchResults.isNotEmpty)
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _searchResults.length,
+                        itemBuilder: (context, index) {
+                          final p = _searchResults[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(_patientDisplayName(p)),
+                            onTap: () => _selectPatient(p),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _complaintController,
+                  decoration: const InputDecoration(
+                    labelText: 'Motif de la consultation',
+                  ),
+                  validator: (v) =>
+                      v?.trim().isEmpty ?? true ? 'Requis' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _vitalsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Signes vitaux (optionnel)',
+                    hintText: 'TA: 120/80, FC: 72, Temp: 37.5C',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('Créer'),
+        ),
       ],
     );
   }

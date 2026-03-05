@@ -41,6 +41,32 @@ class MockEncounterRepository implements EncounterRepository {
   }
 
   @override
+  Future<EncounterModel> createEncounter(
+    int patientId,
+    String chiefComplaint, {
+    String? vitals,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final newId = _store.encounters.isEmpty
+        ? 1
+        : _store.encounters.map((e) => e.id).reduce((a, b) => a > b ? a : b) +
+              1;
+    final encounter = EncounterModel(
+      id: newId,
+      encounterNumber: 'ENC-${newId.toString().padLeft(4, '0')}',
+      patientId: patientId,
+      patientName: '',
+      doctorName: 'Médecin Démo',
+      status: 'Open',
+      chiefComplaint: chiefComplaint,
+      vitals: vitals,
+      createdAt: DateTime.now(),
+    );
+    _store.encounters.add(encounter);
+    return encounter;
+  }
+
+  @override
   Future<void> updateStatus(int id, String status) async {
     await Future.delayed(const Duration(milliseconds: 200));
     final index = _store.encounters.indexWhere((e) => e.id == id);

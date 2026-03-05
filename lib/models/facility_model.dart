@@ -8,8 +8,10 @@ abstract class FacilityModel with _$FacilityModel {
   const factory FacilityModel({
     required int id,
     required String name,
-    required String address,
-    required String type, // "Hospital", "Clinic"
+    String? address,
+    String? phone,
+    String? email,
+    bool? isActive,
     required DateTime createdAt,
   }) = _FacilityModel;
 

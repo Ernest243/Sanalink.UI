@@ -38,4 +38,18 @@ class EncounterRepository {
     final dio = ref.read(dioProvider);
     await dio.put('Encounter/$id/status', data: '"$status"');
   }
+
+  Future<EncounterModel> createEncounter(
+    int patientId,
+    String chiefComplaint, {
+    String? vitals,
+  }) async {
+    final dio = ref.read(dioProvider);
+    final response = await dio.post('Encounter', data: {
+      'patientId': patientId,
+      'chiefComplaint': chiefComplaint,
+      if (vitals != null) 'vitals': vitals,
+    });
+    return EncounterModel.fromJson(response.data);
+  }
 }

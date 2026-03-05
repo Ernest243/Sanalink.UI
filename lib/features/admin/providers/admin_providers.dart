@@ -29,14 +29,19 @@ class FacilityList extends _$FacilityList {
     return ref.watch(adminRepositoryProvider).getFacilities();
   }
 
-  Future<void> createFacility(String name, String address, String type) async {
+  Future<void> createFacility(
+    String name, {
+    String? address,
+    String? phone,
+    String? email,
+  }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       await ref.read(adminRepositoryProvider).createFacility({
         'name': name,
-        'address': address,
-        'type': type,
-        'createdAt': DateTime.now().toIso8601String(),
+        if (address != null) 'address': address,
+        if (phone != null) 'phone': phone,
+        if (email != null) 'email': email,
       });
       return ref.read(adminRepositoryProvider).getFacilities();
     });

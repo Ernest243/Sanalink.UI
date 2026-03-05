@@ -71,7 +71,6 @@ class MockAdminRepository implements AdminRepository {
         id: 1,
         name: 'Hôpital Sanalink Centre',
         address: '123 Avenue de la Santé, kinshasa',
-        type: 'General Hospital',
         createdAt: DateTime.now().subtract(const Duration(days: 365)),
       ),
     ];

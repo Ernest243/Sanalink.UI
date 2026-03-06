@@ -145,3 +145,39 @@ Future<AppointmentsPerDay> appointmentsPerDay(Ref ref) async {
     return AppointmentsPerDay.empty;
   }
 }
+
+@riverpod
+Future<AppointmentsPerDay> patientRegistrations(Ref ref, int days) async {
+  final dio = ref.read(dioProvider);
+  try {
+    final response = await dio.get(
+      'Patient/registrations',
+      queryParameters: {'days': days},
+    );
+    final d = response.data as Map<String, dynamic>;
+    return AppointmentsPerDay(
+      dates: List<String>.from(d['dates'] ?? []),
+      counts: List<int>.from(d['counts'] ?? []),
+    );
+  } catch (_) {
+    return AppointmentsPerDay.empty;
+  }
+}
+
+@riverpod
+Future<AppointmentsPerDay> prescriptionAnalytics(Ref ref, int days) async {
+  final dio = ref.read(dioProvider);
+  try {
+    final response = await dio.get(
+      'Prescriptions/analytics',
+      queryParameters: {'days': days},
+    );
+    final d = response.data as Map<String, dynamic>;
+    return AppointmentsPerDay(
+      dates: List<String>.from(d['dates'] ?? []),
+      counts: List<int>.from(d['counts'] ?? []),
+    );
+  } catch (_) {
+    return AppointmentsPerDay.empty;
+  }
+}

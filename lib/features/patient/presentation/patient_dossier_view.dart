@@ -97,6 +97,7 @@ class PatientDossierView extends ConsumerWidget {
             ),
             const SizedBox(width: 24),
             Expanded(
+              flex: 2,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -125,7 +126,11 @@ class PatientDossierView extends ConsumerWidget {
                 ],
               ),
             ),
-            Flexible(child: _buildVitalsSummary(encounter?.vitals)),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 1,
+              child: _buildVitalsSummary(encounter?.vitals),
+            ),
           ],
         ),
       ),

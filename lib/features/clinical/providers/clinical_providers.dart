@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sanalink/core/auth/auth_service.dart';
 import 'package:sanalink/features/clinical/data/clinical_repository.dart';
 import 'package:sanalink/models/encounter_model.dart';
+import 'package:sanalink/models/note_model.dart';
 import 'package:sanalink/services/patient_resolver_service.dart';
 
 part 'clinical_providers.g.dart';
@@ -73,10 +74,9 @@ class ConsultationList extends _$ConsultationList {
 
   /// Ajoute une note clinique pendant ou en dehors d'une consultation
   Future<void> addNote(int patientId, String content) async {
-    // On n'affiche pas de chargement global pour une note
     await ref.read(clinicalRepositoryProvider).addNote(patientId, content);
-    // Rafraîchissement des providers dépendants
-    ref.invalidate(patientHistoryProvider(patientId));
+    // Rafraîchit la liste des notes pour que la nouvelle apparaisse immédiatement
+    ref.invalidate(patientNotesProvider(patientId));
   }
 }
 
@@ -86,5 +86,13 @@ final patientHistoryProvider = FutureProvider.family<List<EncounterModel>, int>(
     final repository = ref.watch(clinicalRepositoryProvider);
     final encounters = await repository.getEncounters();
     return encounters.where((e) => e.patientId == patientId).toList();
+  },
+);
+
+// Provider pour les notes cliniques d'un patient
+final patientNotesProvider = FutureProvider.family<List<NoteModel>, int>(
+  (ref, patientId) async {
+    final repository = ref.watch(clinicalRepositoryProvider);
+    return repository.getPatientNotes(patientId);
   },
 );

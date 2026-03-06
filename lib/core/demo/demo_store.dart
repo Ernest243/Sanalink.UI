@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:sanalink/models/patient_model.dart';
 import 'package:sanalink/models/encounter_model.dart';
 import 'package:sanalink/models/lab_order_model.dart';
+import 'package:sanalink/models/note_model.dart';
 import 'package:sanalink/models/prescription_model.dart';
 import 'package:sanalink/models/pharmacy_dispense_model.dart';
 
@@ -18,6 +19,7 @@ class DemoStore {
 
   final List<PatientModel> patients = [];
   final List<EncounterModel> encounters = [];
+  final List<NoteModel> notes = [];
   final List<LabOrderModel> labOrders = [];
   final List<PrescriptionModel> prescriptions = [];
   final List<PharmacyDispenseModel> dispenses = [];
@@ -285,8 +287,9 @@ class DemoStore {
   String _getRandomLabResult(String testName, Random r) {
     if (testName.contains('Paludisme')) return 'Positif (++)';
     if (testName.contains('NFS')) return 'GB: 8.5 x10^9/L, Hb: 12.8 g/dL';
-    if (testName.contains('Glycémie'))
+    if (testName.contains('Glycémie')) {
       return '${0.8 + r.nextDouble() * 0.4} g/L';
+    }
     return 'Résultat normal';
   }
 
@@ -329,6 +332,19 @@ class DemoStore {
         medicationName: med,
         dosage: dosage,
         status: 'Pending',
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  void syncNote(int patientId, String content, String doctorName) {
+    final newId = notes.isEmpty ? 1 : notes.map((n) => n.id).reduce(max) + 1;
+    notes.add(
+      NoteModel(
+        id: newId,
+        patientId: patientId,
+        content: content,
+        doctorName: doctorName,
         createdAt: DateTime.now(),
       ),
     );

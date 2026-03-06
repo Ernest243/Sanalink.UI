@@ -8,8 +8,8 @@ abstract class NoteModel with _$NoteModel {
   const factory NoteModel({
     required int id,
     required int patientId,
-    required String authorId,
     required String content,
+    required String doctorName,
     required DateTime createdAt,
   }) = _NoteModel;
 

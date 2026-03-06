@@ -1,5 +1,6 @@
 import 'package:sanalink/features/clinical/data/clinical_repository.dart';
 import 'package:sanalink/models/encounter_model.dart';
+import 'package:sanalink/models/note_model.dart';
 import 'package:sanalink/core/demo/demo_store.dart';
 
 /// [MockClinicalRepository] utilise le [DemoStore] pour simuler les opérations cliniques.
@@ -67,23 +68,20 @@ class MockClinicalRepository implements ClinicalRepository {
   }
 
   @override
+  Future<List<NoteModel>> getPatientNotes(int patientId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return _store.notes
+        .where((n) => n.patientId == patientId)
+        .toList();
+  }
+
+  @override
   Future<void> addNote(int patientId, String content) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    final index = _store.encounters.lastIndexWhere(
-      (e) => e.patientId == patientId && e.status != 'Closed',
-    );
-    if (index != -1) {
-      final oldNotes = _store.encounters[index].clinicalNotes ?? '';
-      _store.encounters[index] = _store.encounters[index].copyWith(
-        clinicalNotes: oldNotes.isEmpty ? content : '$oldNotes\n---\n$content',
-        updatedAt: DateTime.now(),
-      );
-      _autoSyncWorkflows(
-        patientId,
-        content,
-        _store.encounters[index].doctorName,
-      );
-    }
+    // Sauvegarde dans la liste des notes (visible dans le dossier)
+    _store.syncNote(patientId, content, 'Dr. Demo');
+    // Déclenche les workflows automatiques si des mots-clés sont détectés
+    _autoSyncWorkflows(patientId, content, 'Dr. Demo');
   }
 
   /// Déclenche des actions automatiques basées sur le contenu des notes.

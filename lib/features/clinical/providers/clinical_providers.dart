@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sanalink/core/auth/auth_service.dart';
 import 'package:sanalink/features/clinical/data/clinical_repository.dart';
 import 'package:sanalink/models/encounter_model.dart';
 import 'package:sanalink/services/patient_resolver_service.dart';
@@ -29,7 +30,9 @@ class TriageList extends _$TriageList {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(clinicalRepositoryProvider);
-      await repository.updateVitals(id, vitals);
+      final nurseId =
+          ref.read(authServiceProvider).value?.user?.id;
+      await repository.updateVitals(id, vitals, nurseId: nurseId);
       await repository.updateStatus(id, 'InProgress');
       return build();
     });

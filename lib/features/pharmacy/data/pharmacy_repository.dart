@@ -40,6 +40,23 @@ class PharmacyRepository {
         .map((e) => PrescriptionModel.fromJson(e))
         .toList();
   }
+
+  /// Crée une nouvelle ordonnance (Docteur uniquement)
+  /// POST /api/v1/Prescriptions
+  Future<PrescriptionModel> createPrescription({
+    required int patientId,
+    required String medicationName,
+    required String dosage,
+    required String instructions,
+  }) async {
+    final response = await _dio.post('/Prescriptions', data: {
+      'patientId': patientId,
+      'medicationName': medicationName,
+      'dosage': dosage,
+      'instructions': instructions,
+    });
+    return PrescriptionModel.fromJson(response.data);
+  }
 }
 
 @riverpod

@@ -8,10 +8,13 @@ abstract class PrescriptionModel with _$PrescriptionModel {
   const factory PrescriptionModel({
     required int id,
     required int patientId,
-    required String prescribedBy,
     required String medicationName,
     required String dosage,
-    required String status,
+    @Default('') String instructions,
+    required String doctorName,
+    // Status is not stored on the Prescription entity in the backend;
+    // it defaults to 'Pending' until the pharmacist creates a dispense.
+    @Default('Pending') String status,
     required DateTime createdAt,
   }) = _PrescriptionModel;
 

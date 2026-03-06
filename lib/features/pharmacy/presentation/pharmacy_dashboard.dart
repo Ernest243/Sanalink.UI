@@ -57,7 +57,7 @@ class _PendingPrescriptionsList extends ConsumerWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
-                  'Dosage: ${p.dosage}\nPrescrit par: ${p.prescribedBy}',
+                  'Dosage: ${p.dosage}\nPrescrit par: ${p.doctorName}',
                 ),
                 trailing: ElevatedButton(
                   onPressed: () => _showDispenseDialog(context, ref, p),

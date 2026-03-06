@@ -569,44 +569,158 @@ class PatientDossierView extends ConsumerWidget {
     );
   }
 
-  /// Onglet Prescriptions : Affiche les médicaments prescrits
+  /// Onglet Prescriptions : Affiche les médicaments prescrits et permet d'en créer
   Widget _buildPrescriptionsTab(int patientId) {
     return Consumer(
       builder: (context, ref, child) {
         final prescriptionsAsync =
             ref.watch(patientPrescriptionsProvider(patientId));
-        return prescriptionsAsync.when(
-          data: (prescriptions) {
-            if (prescriptions.isEmpty) {
-              return const Center(
-                  child: Text('Aucune prescription enregistrée.'));
-            }
-            return ListView.builder(
-              itemCount: prescriptions.length,
-              itemBuilder: (context, index) {
-                final p = prescriptions[index];
-                return ListTile(
-                  leading: Icon(
-                    p.status == 'Dispensed'
-                        ? Icons.medication
-                        : Icons.description,
-                    color: p.status == 'Dispensed'
-                        ? AppTheme.primaryColor
-                        : Colors.grey,
-                  ),
-                  title: Text(p.medicationName),
-                  subtitle: Text('${p.dosage} - ${p.status}'),
-                  trailing:
-                      Text('${p.createdAt.day}/${p.createdAt.month}'),
+        return Stack(
+          children: [
+            prescriptionsAsync.when(
+              data: (prescriptions) {
+                if (prescriptions.isEmpty) {
+                  return const Center(
+                    child: Text('Aucune prescription enregistrée.'),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 80),
+                  itemCount: prescriptions.length,
+                  itemBuilder: (context, index) {
+                    final p = prescriptions[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          p.status == 'Dispensed'
+                              ? Icons.medication
+                              : Icons.description,
+                          color: p.status == 'Dispensed'
+                              ? AppTheme.primaryColor
+                              : Colors.grey,
+                        ),
+                        title: Text(
+                          p.medicationName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          '${p.dosage}${p.instructions.isNotEmpty ? '\n${p.instructions}' : ''}'
+                          '\nDr. ${p.doctorName} · ${p.status}',
+                        ),
+                        trailing: Text(
+                          '${p.createdAt.day}/${p.createdAt.month}',
+                          style: const TextStyle(
+                              color: Colors.grey, fontSize: 12),
+                        ),
+                        isThreeLine: true,
+                      ),
+                    );
+                  },
                 );
               },
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Center(
-              child: Text('Erreur lors du chargement des prescriptions.')),
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (_, __) => const Center(
+                child: Text('Erreur lors du chargement des prescriptions.'),
+              ),
+            ),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton.extended(
+                heroTag: 'new_prescription_$patientId',
+                onPressed: () =>
+                    _showPrescriptionDialog(context, ref, patientId),
+                icon: const Icon(Icons.add),
+                label: const Text('Nouvelle Ordonnance'),
+              ),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  void _showPrescriptionDialog(
+      BuildContext context, WidgetRef ref, int patientId) {
+    final formKey = GlobalKey<FormState>();
+    final medController = TextEditingController();
+    final dosageController = TextEditingController();
+    final instrController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nouvelle Ordonnance'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: medController,
+                decoration: const InputDecoration(
+                  labelText: 'Médicament',
+                  hintText: 'ex: Paracétamol 1g',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Requis' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: dosageController,
+                decoration: const InputDecoration(
+                  labelText: 'Posologie',
+                  hintText: 'ex: 1 comprimé 3 fois/jour',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Requis' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: instrController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Instructions (optionnel)',
+                  hintText: 'ex: Prendre après les repas pendant 5 jours',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                await ref
+                    .read(prescriptionWriterProvider.notifier)
+                    .create(
+                      patientId: patientId,
+                      medicationName: medController.text.trim(),
+                      dosage: dosageController.text.trim(),
+                      instructions: instrController.text.trim(),
+                    );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Ordonnance créée avec succès')),
+                  );
+                }
+              }
+            },
+            child: const Text('Prescrire'),
+          ),
+        ],
+      ),
     );
   }
 }

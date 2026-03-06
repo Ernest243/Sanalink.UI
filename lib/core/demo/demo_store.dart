@@ -245,7 +245,7 @@ class DemoStore {
         PrescriptionModel(
           id: prescId,
           patientId: patient.id,
-          prescribedBy: 'Dr. Elie',
+          doctorName: 'Dr. Elie',
           medicationName: med,
           dosage: '1 comprimé 3 fois par jour pendant 5 jours',
           status: isDispensed ? 'Dispensed' : 'Pending',
@@ -328,7 +328,7 @@ class DemoStore {
       PrescriptionModel(
         id: newId,
         patientId: patientId,
-        prescribedBy: doctor,
+        doctorName: doctor,
         medicationName: med,
         dosage: dosage,
         status: 'Pending',

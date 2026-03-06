@@ -51,4 +51,16 @@ class MockPharmacyRepository implements PharmacyRepository {
         .where((p) => p.patientId == patientId)
         .toList();
   }
+
+  @override
+  Future<PrescriptionModel> createPrescription({
+    required int patientId,
+    required String medicationName,
+    required String dosage,
+    required String instructions,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    _store.syncPrescription(patientId, medicationName, dosage, 'Dr. Demo');
+    return _store.prescriptions.last;
+  }
 }

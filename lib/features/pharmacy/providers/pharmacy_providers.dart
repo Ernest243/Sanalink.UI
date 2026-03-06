@@ -14,6 +14,30 @@ Future<List<PrescriptionModel>> patientPrescriptions(
 }
 
 @riverpod
+class PrescriptionWriter extends _$PrescriptionWriter {
+  @override
+  FutureOr<void> build() {}
+
+  Future<void> create({
+    required int patientId,
+    required String medicationName,
+    required String dosage,
+    required String instructions,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(pharmacyRepositoryProvider).createPrescription(
+            patientId: patientId,
+            medicationName: medicationName,
+            dosage: dosage,
+            instructions: instructions,
+          );
+      ref.invalidate(patientPrescriptionsProvider(patientId));
+    });
+  }
+}
+
+@riverpod
 class PendingPrescriptions extends _$PendingPrescriptions {
   @override
   FutureOr<List<PrescriptionModel>> build() {

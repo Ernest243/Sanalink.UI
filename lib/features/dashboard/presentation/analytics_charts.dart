@@ -36,10 +36,10 @@ class AnalyticsChartsSection extends ConsumerWidget {
               icon: Icons.calendar_month,
               child: perDayAsync.when(
                 data: (data) => data.dates.isEmpty
-                    ? _empty('Aucune donnée')
-                    : _AppointmentsBarChart(data: data),
-                loading: _loading,
-                error: (_, __) => _empty('Données indisponibles'),
+                    ? _emptyWidget('Aucune donnée')
+                    : _PerDayBarChart(data: data, color: AppTheme.primaryColor),
+                loading: _loadingWidget,
+                error: (_, __) => _emptyWidget('Données indisponibles'),
               ),
             ),
             _ChartCard(
@@ -47,10 +47,10 @@ class AnalyticsChartsSection extends ConsumerWidget {
               icon: Icons.medical_services,
               child: encounterAsync.when(
                 data: (data) => data.total == 0
-                    ? _empty('Aucune consultation')
+                    ? _emptyWidget('Aucune consultation')
                     : _EncounterDonutChart(data: data),
-                loading: _loading,
-                error: (_, __) => _empty('Données indisponibles'),
+                loading: _loadingWidget,
+                error: (_, __) => _emptyWidget('Données indisponibles'),
               ),
             ),
           ];
@@ -80,28 +80,54 @@ class AnalyticsChartsSection extends ConsumerWidget {
           icon: Icons.people,
           child: staffAsync.when(
             data: (staff) => staff.isEmpty
-                ? _empty('Aucun personnel')
+                ? _emptyWidget('Aucun personnel')
                 : _StaffByRoleBarChart(staff: staff
                     .map((s) => s.role)
                     .toList()),
-            loading: _loading,
-            error: (_, __) => _empty('Données indisponibles'),
+            loading: _loadingWidget,
+            error: (_, __) => _emptyWidget('Données indisponibles'),
           ),
         ),
+
+        const SizedBox(height: 16),
+
+        // ── Row 3: patient registrations + prescriptions per day ───────────
+        LayoutBuilder(builder: (context, constraints) {
+          final wide = constraints.maxWidth > 700;
+          final charts = [
+            const _PatientRegistrationsChart(),
+            const _PrescriptionsPerDayChart(),
+          ];
+          if (wide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: charts[0]),
+                const SizedBox(width: 16),
+                Expanded(child: charts[1]),
+              ],
+            );
+          }
+          return Column(children: [
+            charts[0],
+            const SizedBox(height: 16),
+            charts[1],
+          ]);
+        }),
       ],
     );
   }
-
-  Widget _loading() =>
-      const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
-
-  Widget _empty(String msg) => SizedBox(
-        height: 180,
-        child: Center(
-          child: Text(msg, style: const TextStyle(color: Colors.grey)),
-        ),
-      );
 }
+
+Widget _loadingWidget() =>
+    const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+
+Widget _emptyWidget(String msg) => SizedBox(
+      height: 180,
+      child: Center(
+        child: Text(msg, style: const TextStyle(color: Colors.grey)),
+      ),
+    );
 
 // ─── Chart wrapper card ────────────────────────────────────────────────────
 
@@ -109,8 +135,14 @@ class _ChartCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Widget child;
+  final Widget? trailing;
 
-  const _ChartCard({required this.title, required this.icon, required this.child});
+  const _ChartCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -124,9 +156,12 @@ class _ChartCard extends StatelessWidget {
             Row(children: [
               Icon(icon, size: 18, color: AppTheme.primaryColor),
               const SizedBox(width: 8),
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+              if (trailing != null) trailing!,
             ]),
             const Divider(height: 20),
             child,
@@ -137,17 +172,46 @@ class _ChartCard extends StatelessWidget {
   }
 }
 
-// ─── Chart 1: Appointments per day (bar) ──────────────────────────────────
+// ─── Period selector ──────────────────────────────────────────────────────
 
-class _AppointmentsBarChart extends StatelessWidget {
-  final AppointmentsPerDay data;
-  const _AppointmentsBarChart({required this.data});
+class _PeriodSelector extends StatelessWidget {
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  static const _options = [(label: '7J', days: 7), (label: '30J', days: 30), (label: '3M', days: 90)];
+
+  const _PeriodSelector({required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    final maxY = (data.counts.isEmpty
-            ? 1
-            : data.counts.reduce((a, b) => a > b ? a : b))
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: _options
+          .map((o) => Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: ChoiceChip(
+                  label: Text(o.label, style: const TextStyle(fontSize: 11)),
+                  selected: selected == o.days,
+                  onSelected: (_) => onChanged(o.days),
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+              ))
+          .toList(),
+    );
+  }
+}
+
+// ─── Chart 1: Appointments per day (bar) ──────────────────────────────────
+
+class _PerDayBarChart extends StatelessWidget {
+  final AppointmentsPerDay data;
+  final Color color;
+  const _PerDayBarChart({required this.data, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxY = (data.counts.isEmpty ? 1 : data.counts.reduce((a, b) => a > b ? a : b))
         .toDouble();
 
     return SizedBox(
@@ -201,7 +265,7 @@ class _AppointmentsBarChart extends StatelessWidget {
             return BarChartGroupData(x: i, barRods: [
               BarChartRodData(
                 toY: data.counts[i].toDouble(),
-                color: AppTheme.primaryColor,
+                color: color,
                 width: 14,
                 borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(4)),
@@ -400,6 +464,76 @@ class _StaffByRoleBarChart extends StatelessWidget {
             );
           }),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Chart 4: Patient registrations per day (bar + period toggle) ─────────
+
+class _PatientRegistrationsChart extends ConsumerStatefulWidget {
+  const _PatientRegistrationsChart();
+
+  @override
+  ConsumerState<_PatientRegistrationsChart> createState() =>
+      _PatientRegistrationsChartState();
+}
+
+class _PatientRegistrationsChartState
+    extends ConsumerState<_PatientRegistrationsChart> {
+  int _days = 7;
+
+  @override
+  Widget build(BuildContext context) {
+    final dataAsync = ref.watch(patientRegistrationsProvider(_days));
+    return _ChartCard(
+      title: 'Inscriptions patients',
+      icon: Icons.person_add,
+      trailing: _PeriodSelector(
+        selected: _days,
+        onChanged: (d) => setState(() => _days = d),
+      ),
+      child: dataAsync.when(
+        data: (data) => data.dates.isEmpty
+            ? _emptyWidget('Aucune inscription')
+            : _PerDayBarChart(data: data, color: Colors.teal),
+        loading: _loadingWidget,
+        error: (_, __) => _emptyWidget('Données indisponibles'),
+      ),
+    );
+  }
+}
+
+// ─── Chart 5: Prescriptions per day (bar + period toggle) ─────────────────
+
+class _PrescriptionsPerDayChart extends ConsumerStatefulWidget {
+  const _PrescriptionsPerDayChart();
+
+  @override
+  ConsumerState<_PrescriptionsPerDayChart> createState() =>
+      _PrescriptionsPerDayChartState();
+}
+
+class _PrescriptionsPerDayChartState
+    extends ConsumerState<_PrescriptionsPerDayChart> {
+  int _days = 7;
+
+  @override
+  Widget build(BuildContext context) {
+    final dataAsync = ref.watch(prescriptionAnalyticsProvider(_days));
+    return _ChartCard(
+      title: 'Prescriptions émises',
+      icon: Icons.medication,
+      trailing: _PeriodSelector(
+        selected: _days,
+        onChanged: (d) => setState(() => _days = d),
+      ),
+      child: dataAsync.when(
+        data: (data) => data.dates.isEmpty
+            ? _emptyWidget('Aucune prescription')
+            : _PerDayBarChart(data: data, color: Colors.purple),
+        loading: _loadingWidget,
+        error: (_, __) => _emptyWidget('Données indisponibles'),
       ),
     );
   }

@@ -124,7 +124,7 @@ class PatientDossierView extends ConsumerWidget {
                 ],
               ),
             ),
-            _buildVitalsSummary(encounter?.vitals),
+            Flexible(child: _buildVitalsSummary(encounter?.vitals)),
           ],
         ),
       ),
@@ -171,20 +171,20 @@ class PatientDossierView extends ConsumerWidget {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           ),
           const SizedBox(height: 8),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _VitalBadge(
                 icon: Icons.favorite,
                 value: '$fc bpm',
                 color: Colors.red,
               ),
-              const SizedBox(width: 12),
               _VitalBadge(
                 icon: Icons.thermostat,
                 value: '$temp°C',
                 color: Colors.orange,
               ),
-              const SizedBox(width: 12),
               _VitalBadge(icon: Icons.compress, value: ta, color: Colors.blue),
             ],
           ),

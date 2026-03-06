@@ -17,14 +17,17 @@ class MockClinicalRepository implements ClinicalRepository {
   }
 
   @override
-  Future<void> updateVitals(int id, Map<String, dynamic> vitals) async {
+  Future<void> updateVitals(
+    int id,
+    Map<String, dynamic> vitals, {
+    String? nurseId,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 300));
     final index = _store.encounters.indexWhere((e) => e.id == id);
     if (index != -1) {
       final old = _store.encounters[index];
-      final vitalsStr = vitals.entries
-          .map((e) => '${e.key}: ${e.value}')
-          .join(', ');
+      final vitalsStr =
+          'TA: ${vitals['bloodPressure']}, FC: ${vitals['heartRate']}, Temp: ${vitals['temperature']}C';
       _store.encounters[index] = old.copyWith(
         vitals: vitalsStr,
         updatedAt: DateTime.now(),

@@ -21,9 +21,21 @@ class ClinicalRepository {
         .toList();
   }
 
-  /// Met à jour les constantes vitale (Encounter)
-  Future<void> updateVitals(int id, Map<String, dynamic> vitals) async {
-    await _dio.put('/Encounter/$id', data: {'vitals': vitals});
+  /// Met à jour les constantes vitale (Encounter).
+  /// [vitals] doit contenir les clés 'bloodPressure', 'heartRate', 'temperature'.
+  /// [nurseId] est l'identifiant de l'infirmier effectuant la mesure.
+  Future<void> updateVitals(
+    int id,
+    Map<String, dynamic> vitals, {
+    String? nurseId,
+  }) async {
+    // Sérialise le map vers la chaîne attendue par le backend et le parser du dossier
+    final vitalsStr =
+        'TA: ${vitals['bloodPressure']}, FC: ${vitals['heartRate']}, Temp: ${vitals['temperature']}C';
+    await _dio.put('/Encounter/$id', data: {
+      'vitals': vitalsStr,
+      if (nurseId != null) 'nurseId': nurseId,
+    });
   }
 
   /// Change le statut (Encounter)

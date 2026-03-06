@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sanalink/core/network/dio_client.dart';
 import 'package:sanalink/models/encounter_model.dart';
+import 'package:sanalink/models/note_model.dart';
 
 part 'clinical_repository.g.dart';
 
@@ -49,6 +50,15 @@ class ClinicalRepository {
       '/Encounter/$id',
       data: {'diagnosis': diagnosis, 'clinicalNotes': notes},
     );
+  }
+
+  /// Récupère les notes cliniques d'un patient
+  /// GET /api/v1/Notes/patient/{patientId}
+  Future<List<NoteModel>> getPatientNotes(int patientId) async {
+    final response = await _dio.get('/Notes/patient/$patientId');
+    return (response.data as List)
+        .map((e) => NoteModel.fromJson(e))
+        .toList();
   }
 
   /// Ajoute une note clinique pour un patient

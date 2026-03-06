@@ -4,6 +4,7 @@ import 'package:sanalink/features/clinical/providers/clinical_providers.dart';
 import 'package:sanalink/features/laboratory/providers/lab_providers.dart';
 import 'package:sanalink/features/pharmacy/providers/pharmacy_providers.dart';
 import 'package:sanalink/models/encounter_model.dart';
+import 'package:sanalink/models/note_model.dart';
 import 'package:sanalink/services/patient_resolver_service.dart';
 import 'package:sanalink/theme/app_theme.dart';
 
@@ -223,70 +224,99 @@ class PatientDossierView extends ConsumerWidget {
     );
   }
 
-  /// Onglet des notes cliniques
+  /// Onglet des notes cliniques : affiche les notes libres puis l'historique des consultations
   Widget _buildNotesTab(BuildContext context, WidgetRef ref, int patientId) {
-    // Récupération de l'historique depuis le provider
+    final notesAsync = ref.watch(patientNotesProvider(patientId));
     final historyAsync = ref.watch(patientHistoryProvider(patientId));
 
     return Stack(
       children: [
-        historyAsync.when(
-          data: (history) => ListView.builder(
-            itemCount: history.length,
-            itemBuilder: (context, index) {
-              final enc = history[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            enc.status == 'Closed'
-                                ? 'Consultation passée'
-                                : 'Consultation en cours',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: enc.status == 'Closed'
-                                  ? Colors.grey
-                                  : AppTheme.primaryColor,
-                            ),
-                          ),
-                          Text(
-                            '${enc.createdAt.day}/${enc.createdAt.month}/${enc.createdAt.year}',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+        CustomScrollView(
+          slivers: [
+            // ── Notes libres ──────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Notes cliniques',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Motif: ${enc.chiefComplaint}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      if (enc.diagnosis != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Diagnostic: ${enc.diagnosis}',
-                          style: const TextStyle(color: Colors.blueGrey),
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      Text(enc.clinicalNotes ?? 'Pas de note saisie.'),
-                    ],
-                  ),
                 ),
-              );
-            },
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, s) => Center(child: Text('Erreur: $e')),
+              ),
+            ),
+            notesAsync.when(
+              data: (notes) => notes.isEmpty
+                  ? const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          'Aucune note saisie.',
+                          style: TextStyle(fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                    )
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) =>
+                            _buildNoteCard(notes[index]),
+                        childCount: notes.length,
+                      ),
+                    ),
+              loading: () => const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+              error: (e, _) => SliverToBoxAdapter(
+                child: Text('Erreur notes: $e'),
+              ),
+            ),
+
+            // ── Historique des consultations ──────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Historique des consultations',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+            ),
+            historyAsync.when(
+              data: (history) => history.isEmpty
+                  ? const SliverToBoxAdapter(
+                      child: Text(
+                        'Aucune consultation enregistrée.',
+                        style: TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                    )
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) =>
+                            _buildEncounterCard(history[index]),
+                        childCount: history.length,
+                      ),
+                    ),
+              loading: () => const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+              error: (e, _) => SliverToBoxAdapter(
+                child: Text('Erreur historique: $e'),
+              ),
+            ),
+
+            // Space for the FAB
+            const SliverToBoxAdapter(child: SizedBox(height: 80)),
+          ],
         ),
         Positioned(
           bottom: 16,
@@ -298,6 +328,93 @@ class PatientDossierView extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildNoteCard(NoteModel note) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.edit_note,
+                        size: 16, color: AppTheme.primaryColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      note.doctorName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '${note.createdAt.day}/${note.createdAt.month}/${note.createdAt.year}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(note.content),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEncounterCard(EncounterModel enc) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  enc.status == 'Closed'
+                      ? 'Consultation passée'
+                      : 'Consultation en cours',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: enc.status == 'Closed'
+                        ? Colors.grey
+                        : AppTheme.primaryColor,
+                  ),
+                ),
+                Text(
+                  '${enc.createdAt.day}/${enc.createdAt.month}/${enc.createdAt.year}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Motif: ${enc.chiefComplaint}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (enc.diagnosis != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Diagnostic: ${enc.diagnosis}',
+                style: const TextStyle(color: Colors.blueGrey),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Text(enc.clinicalNotes ?? 'Pas de note saisie.'),
+          ],
+        ),
+      ),
     );
   }
 

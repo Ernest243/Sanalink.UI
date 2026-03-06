@@ -87,3 +87,61 @@ Future<List<EncounterModel>> recentEncounters(Ref ref) async {
       .map((e) => EncounterModel.fromJson(e))
       .toList();
 }
+
+class EncounterAnalytics {
+  final int total;
+  final int open;
+  final int inProgress;
+  final int closed;
+
+  const EncounterAnalytics({
+    required this.total,
+    required this.open,
+    required this.inProgress,
+    required this.closed,
+  });
+
+  static const empty = EncounterAnalytics(
+      total: 0, open: 0, inProgress: 0, closed: 0);
+}
+
+class AppointmentsPerDay {
+  final List<String> dates;
+  final List<int> counts;
+
+  const AppointmentsPerDay({required this.dates, required this.counts});
+
+  static const empty = AppointmentsPerDay(dates: [], counts: []);
+}
+
+@riverpod
+Future<EncounterAnalytics> encounterAnalytics(Ref ref) async {
+  final dio = ref.read(dioProvider);
+  try {
+    final response = await dio.get('Encounter/analytics');
+    final d = response.data as Map<String, dynamic>;
+    return EncounterAnalytics(
+      total: d['total'] ?? 0,
+      open: d['open'] ?? 0,
+      inProgress: d['inProgress'] ?? 0,
+      closed: d['closed'] ?? 0,
+    );
+  } catch (_) {
+    return EncounterAnalytics.empty;
+  }
+}
+
+@riverpod
+Future<AppointmentsPerDay> appointmentsPerDay(Ref ref) async {
+  final dio = ref.read(dioProvider);
+  try {
+    final response = await dio.get('Appointment/appointments-per-day');
+    final d = response.data as Map<String, dynamic>;
+    return AppointmentsPerDay(
+      dates: List<String>.from(d['dates'] ?? []),
+      counts: List<int>.from(d['counts'] ?? []),
+    );
+  } catch (_) {
+    return AppointmentsPerDay.empty;
+  }
+}

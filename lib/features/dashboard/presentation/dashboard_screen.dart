@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sanalink/features/dashboard/presentation/analytics_charts.dart';
 import 'package:sanalink/features/dashboard/providers/dashboard_providers.dart';
 import 'package:sanalink/models/encounter_model.dart';
 import 'package:sanalink/theme/app_theme.dart';
@@ -26,6 +27,8 @@ class DashboardScreen extends ConsumerWidget {
               ref.invalidate(appointmentAnalyticsProvider);
               ref.invalidate(activeStaffCountProvider);
               ref.invalidate(recentEncountersProvider);
+              ref.invalidate(encounterAnalyticsProvider);
+              ref.invalidate(appointmentsPerDayProvider);
             },
           ),
         ],
@@ -145,6 +148,8 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 32),
+            const AnalyticsChartsSection(),
           ],
         ),
       ),

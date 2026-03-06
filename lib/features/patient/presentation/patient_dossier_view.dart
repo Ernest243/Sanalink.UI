@@ -108,19 +108,25 @@ class PatientDossierView extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
-                      const Icon(Icons.cake, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(age != null ? '$age ans' : 'N/A'),
-                      const SizedBox(width: 24),
-                      const Icon(Icons.male, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      const Text('Profil Vérifié'),
-                      const SizedBox(width: 24),
-                      const Icon(Icons.pin, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text('ID: ${encounter?.patientId ?? patientId}'),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.cake, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(age != null ? '$age ans' : 'N/A'),
+                      ]),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.male, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        const Text('Profil Vérifié'),
+                      ]),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.pin, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text('ID: ${encounter?.patientId ?? patientId}'),
+                      ]),
                     ],
                   ),
                 ],
@@ -327,6 +333,7 @@ class PatientDossierView extends ConsumerWidget {
           bottom: 16,
           right: 16,
           child: FloatingActionButton.extended(
+            heroTag: 'new_note_$patientId',
             onPressed: () => _showNoteDialog(context, ref, patientId),
             icon: const Icon(Icons.add),
             label: const Text('Nouvelle Note'),
@@ -644,84 +651,105 @@ class PatientDossierView extends ConsumerWidget {
 
   void _showPrescriptionDialog(
       BuildContext context, WidgetRef ref, int patientId) {
-    final formKey = GlobalKey<FormState>();
-    final medController = TextEditingController();
-    final dosageController = TextEditingController();
-    final instrController = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nouvelle Ordonnance'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: medController,
-                decoration: const InputDecoration(
-                  labelText: 'Médicament',
-                  hintText: 'ex: Paracétamol 1g',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Requis' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: dosageController,
-                decoration: const InputDecoration(
-                  labelText: 'Posologie',
-                  hintText: 'ex: 1 comprimé 3 fois/jour',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Requis' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: instrController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Instructions (optionnel)',
-                  hintText: 'ex: Prendre après les repas pendant 5 jours',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                await ref
-                    .read(prescriptionWriterProvider.notifier)
-                    .create(
-                      patientId: patientId,
-                      medicationName: medController.text.trim(),
-                      dosage: dosageController.text.trim(),
-                      instructions: instrController.text.trim(),
-                    );
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Ordonnance créée avec succès')),
-                  );
-                }
-              }
-            },
-            child: const Text('Prescrire'),
-          ),
-        ],
-      ),
+      builder: (_) => _PrescriptionDialog(patientId: patientId),
     );
+  }
+}
+
+class _PrescriptionDialog extends ConsumerStatefulWidget {
+  final int patientId;
+  const _PrescriptionDialog({required this.patientId});
+
+  @override
+  ConsumerState<_PrescriptionDialog> createState() =>
+      _PrescriptionDialogState();
+}
+
+class _PrescriptionDialogState extends ConsumerState<_PrescriptionDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _medController = TextEditingController();
+  final _dosageController = TextEditingController();
+  final _instrController = TextEditingController();
+
+  @override
+  void dispose() {
+    _medController.dispose();
+    _dosageController.dispose();
+    _instrController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nouvelle Ordonnance'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _medController,
+              decoration: const InputDecoration(
+                labelText: 'Médicament',
+                hintText: 'ex: Paracétamol 1g',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) => v == null || v.isEmpty ? 'Requis' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _dosageController,
+              decoration: const InputDecoration(
+                labelText: 'Posologie',
+                hintText: 'ex: 1 comprimé 3 fois/jour',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) => v == null || v.isEmpty ? 'Requis' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _instrController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Instructions (optionnel)',
+                hintText: 'ex: Prendre après les repas pendant 5 jours',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('Prescrire'),
+        ),
+      ],
+    );
+  }
+
+  void _submit() async {
+    if (_formKey.currentState!.validate()) {
+      await ref.read(prescriptionWriterProvider.notifier).create(
+            patientId: widget.patientId,
+            medicationName: _medController.text.trim(),
+            dosage: _dosageController.text.trim(),
+            instructions: _instrController.text.trim(),
+          );
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ordonnance créée avec succès')),
+        );
+      }
+    }
   }
 }
 

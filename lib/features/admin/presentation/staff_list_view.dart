@@ -4,6 +4,7 @@ import 'package:sanalink/core/auth/auth_service.dart';
 import 'package:sanalink/features/admin/providers/admin_providers.dart';
 import 'package:sanalink/models/staff_user_model.dart';
 import 'package:sanalink/models/staff_registration_request.dart';
+import 'package:sanalink/theme/app_theme.dart';
 
 class StaffListView extends ConsumerWidget {
   const StaffListView({super.key});
@@ -25,12 +26,28 @@ class StaffListView extends ConsumerWidget {
       body: staffState.when(
         data: (staff) => _buildBody(context, ref, staff),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Erreur: $err')),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Impossible de charger le personnel.\n$err',
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => ref.invalidate(staffListProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Réessayer'),
+              ),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showRegistrationDialog(context, ref),
         label: const Text('Ajouter un membre'),
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.person_add),
       ),
     );
   }
@@ -40,101 +57,139 @@ class StaffListView extends ConsumerWidget {
     WidgetRef ref,
     List<StaffUserModel> staff,
   ) {
+    if (staff.isEmpty) {
+      return const Center(child: Text('Aucun personnel enregistré.'));
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 900) {
-          return _buildDataTable(staff);
+          return _buildDataTable(context, staff);
         } else {
-          return _buildCardGrid(staff);
+          return _buildCardList(context, staff);
         }
       },
     );
   }
 
-  Widget _buildDataTable(List<StaffUserModel> staff) {
+  Widget _buildDataTable(BuildContext context, List<StaffUserModel> staff) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Card(
         child: DataTable(
           columns: const [
-            DataColumn(
-              label: Text(
-                'Nom Complet',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Email',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Rôle',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Département',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
+            DataColumn(label: Text('Nom Complet', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Rôle', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Département', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Statut', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
           rows: staff
-              .map(
-                (s) => DataRow(
-                  cells: [
-                    DataCell(Text(s.fullName)),
-                    DataCell(Text(s.email)),
-                    DataCell(_buildRoleChip(s.role)),
-                    DataCell(Text(s.department ?? 'N/A')),
-                  ],
-                ),
-              )
+              .map((s) => DataRow(
+                    onSelectChanged: (_) => _openProfile(context, s),
+                    cells: [
+                      DataCell(Row(children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: _roleColor(s.role).withValues(alpha: 0.15),
+                          child: Text(
+                            s.firstName.isNotEmpty ? s.firstName[0].toUpperCase() : '?',
+                            style: TextStyle(color: _roleColor(s.role), fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(s.fullName),
+                      ])),
+                      DataCell(Text(s.email)),
+                      DataCell(_buildRoleChip(s.role)),
+                      DataCell(Text(s.department ?? '—')),
+                      DataCell(_buildStatusChip(s.isActive)),
+                    ],
+                  ))
               .toList(),
         ),
       ),
     );
   }
 
-  Widget _buildCardGrid(List<StaffUserModel> staff) {
+  Widget _buildCardList(BuildContext context, List<StaffUserModel> staff) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: staff.length,
       itemBuilder: (context, index) {
         final s = staff[index];
         return Card(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 10),
           child: ListTile(
-            title: Text(
-              s.fullName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            onTap: () => _openProfile(context, s),
+            leading: CircleAvatar(
+              backgroundColor: _roleColor(s.role).withValues(alpha: 0.15),
+              child: Text(
+                s.firstName.isNotEmpty ? s.firstName[0].toUpperCase() : '?',
+                style: TextStyle(color: _roleColor(s.role), fontWeight: FontWeight.bold),
+              ),
             ),
-            subtitle: Text('${s.email}\n${s.department ?? ""}\b'),
-            isThreeLine: true,
-            trailing: _buildRoleChip(s.role),
+            title: Text(s.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('${s.email}\n${s.department ?? ""}'),
+            isThreeLine: s.department != null,
+            trailing: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _buildRoleChip(s.role),
+                const SizedBox(height: 4),
+                _buildStatusChip(s.isActive),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildRoleChip(String role) {
-    Color color = Colors.grey;
-    if (role == 'Admin') color = Colors.red;
-    if (role == 'Doctor') color = Colors.blue;
-    if (role == 'Nurse') color = Colors.green;
-    if (role == 'DAF') color = Colors.purple;
+  void _openProfile(BuildContext context, StaffUserModel staff) {
+    showDialog(
+      context: context,
+      builder: (_) => _StaffProfileDialog(staff: staff),
+    );
+  }
 
+  Color _roleColor(String role) {
+    switch (role) {
+      case 'Admin':
+        return Colors.red;
+      case 'Doctor':
+        return Colors.blue;
+      case 'Nurse':
+        return Colors.green;
+      case 'Pharmacist':
+        return Colors.orange;
+      case 'LabTech':
+        return Colors.purple;
+      case 'DAF':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Widget _buildRoleChip(String role) {
+    return Chip(
+      label: Text(role, style: const TextStyle(fontSize: 10, color: Colors.white)),
+      backgroundColor: _roleColor(role),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Widget _buildStatusChip(bool isActive) {
     return Chip(
       label: Text(
-        role,
+        isActive ? 'Actif' : 'Inactif',
         style: const TextStyle(fontSize: 10, color: Colors.white),
       ),
-      backgroundColor: color,
+      backgroundColor: isActive ? Colors.green : Colors.grey,
       padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
     );
   }
 
@@ -145,6 +200,173 @@ class StaffListView extends ConsumerWidget {
     );
   }
 }
+
+// ─── Staff Profile Dialog ──────────────────────────────────────────────────
+
+class _StaffProfileDialog extends StatelessWidget {
+  final StaffUserModel staff;
+  const _StaffProfileDialog({required this.staff});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _roleColor(staff.role);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 36,
+                    backgroundColor: color.withValues(alpha: 0.2),
+                    child: Text(
+                      staff.firstName.isNotEmpty ? staff.firstName[0].toUpperCase() : '?',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          staff.fullName,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Chip(
+                              label: Text(
+                                staff.role,
+                                style: const TextStyle(fontSize: 11, color: Colors.white),
+                              ),
+                              backgroundColor: color,
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            const SizedBox(width: 8),
+                            Chip(
+                              label: Text(
+                                staff.isActive ? 'Actif' : 'Inactif',
+                                style: const TextStyle(fontSize: 11, color: Colors.white),
+                              ),
+                              backgroundColor: staff.isActive ? Colors.green : Colors.grey,
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Details
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  _ProfileRow(Icons.email, 'Email', staff.email),
+                  const Divider(height: 20),
+                  _ProfileRow(Icons.business_center, 'Département',
+                      staff.department ?? 'Non assigné'),
+                  const Divider(height: 20),
+                  _ProfileRow(Icons.business, 'Établissement',
+                      staff.facilityId != null ? 'Facility #${staff.facilityId}' : 'N/A'),
+                  if (staff.createdAt != null) ...[
+                    const Divider(height: 20),
+                    _ProfileRow(
+                      Icons.calendar_today,
+                      'Membre depuis',
+                      '${staff.createdAt!.day}/${staff.createdAt!.month}/${staff.createdAt!.year}',
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Fermer'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _roleColor(String role) {
+    switch (role) {
+      case 'Admin': return Colors.red;
+      case 'Doctor': return Colors.blue;
+      case 'Nurse': return Colors.green;
+      case 'Pharmacist': return Colors.orange;
+      case 'LabTech': return Colors.purple;
+      case 'DAF': return Colors.teal;
+      default: return Colors.grey;
+    }
+  }
+}
+
+class _ProfileRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ProfileRow(this.icon, this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppTheme.primaryColor),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Staff Registration Dialog ─────────────────────────────────────────────
 
 class StaffRegistrationDialog extends ConsumerStatefulWidget {
   const StaffRegistrationDialog({super.key});

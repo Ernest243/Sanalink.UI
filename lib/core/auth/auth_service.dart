@@ -31,12 +31,17 @@ class AuthService extends _$AuthService {
       }
 
       if (!JwtDecoder.isExpired(token)) {
-        final decodedToken = JwtDecoder.decode(token);
-        final user = StaffUserModel.fromJson(decodedToken);
+        final user = StaffUserModel.fromJson(_normalizeJwt(token));
         return AuthState(token: token, user: user);
       }
     }
     return const AuthState();
+  }
+
+  /// JWT uses 'sub' for the user ID; StaffUserModel uses 'id'. Remap here.
+  Map<String, dynamic> _normalizeJwt(String token) {
+    final decoded = JwtDecoder.decode(token);
+    return {...decoded, 'id': decoded['sub']};
   }
 
   Future<void> login(String token) async {
@@ -47,8 +52,7 @@ class AuthService extends _$AuthService {
     if (isDemoMode) {
       user = _getMockUser(token);
     } else {
-      final decodedToken = JwtDecoder.decode(token);
-      user = StaffUserModel.fromJson(decodedToken);
+      user = StaffUserModel.fromJson(_normalizeJwt(token));
     }
 
     state = AsyncData(AuthState(token: token, user: user));

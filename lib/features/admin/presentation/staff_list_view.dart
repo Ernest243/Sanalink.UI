@@ -6,11 +6,35 @@ import 'package:sanalink/models/staff_user_model.dart';
 import 'package:sanalink/models/staff_registration_request.dart';
 import 'package:sanalink/theme/app_theme.dart';
 
-class StaffListView extends ConsumerWidget {
+class StaffListView extends ConsumerStatefulWidget {
   const StaffListView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StaffListView> createState() => _StaffListViewState();
+}
+
+class _StaffListViewState extends ConsumerState<StaffListView> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<StaffUserModel> _filter(List<StaffUserModel> all) {
+    if (_query.isEmpty) return all;
+    final q = _query.toLowerCase();
+    return all.where((s) =>
+        s.fullName.toLowerCase().contains(q) ||
+        s.email.toLowerCase().contains(q) ||
+        s.role.toLowerCase().contains(q) ||
+        (s.department ?? '').toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final staffState = ref.watch(staffListProvider);
 
     return Scaffold(
@@ -23,43 +47,78 @@ class StaffListView extends ConsumerWidget {
           ),
         ],
       ),
-      body: staffState.when(
-        data: (staff) => _buildBody(context, ref, staff),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Impossible de charger le personnel.\n$err',
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => ref.invalidate(staffListProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Réessayer'),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Rechercher par nom, email, rôle, département…',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
-            ],
+              onChanged: (v) => setState(() => _query = v.trim()),
+            ),
           ),
-        ),
+          Expanded(
+            child: staffState.when(
+              data: (staff) {
+                final filtered = _filter(staff);
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Text(_query.isEmpty
+                        ? 'Aucun personnel enregistré.'
+                        : 'Aucun résultat pour "$_query".'),
+                  );
+                }
+                return _buildBody(context, filtered);
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Impossible de charger le personnel.\n$err',
+                        textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => ref.invalidate(staffListProvider),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Réessayer'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showRegistrationDialog(context, ref),
+        onPressed: () => _showRegistrationDialog(context),
         label: const Text('Ajouter un membre'),
         icon: const Icon(Icons.person_add),
       ),
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    WidgetRef ref,
-    List<StaffUserModel> staff,
-  ) {
-    if (staff.isEmpty) {
-      return const Center(child: Text('Aucun personnel enregistré.'));
-    }
+  Widget _buildBody(BuildContext context, List<StaffUserModel> staff) {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 900) {
@@ -146,10 +205,10 @@ class StaffListView extends ConsumerWidget {
     );
   }
 
-  void _openProfile(BuildContext context, StaffUserModel staff) {
+  void _openProfile(BuildContext context, StaffUserModel s) {
     showDialog(
       context: context,
-      builder: (_) => _StaffProfileDialog(staff: staff),
+      builder: (_) => _StaffProfileDialog(staff: s),
     );
   }
 
@@ -193,7 +252,7 @@ class StaffListView extends ConsumerWidget {
     );
   }
 
-  void _showRegistrationDialog(BuildContext context, WidgetRef ref) {
+  void _showRegistrationDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => const StaffRegistrationDialog(),

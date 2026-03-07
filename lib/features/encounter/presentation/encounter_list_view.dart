@@ -7,11 +7,36 @@ import 'package:sanalink/core/network/dio_client.dart';
 import 'package:sanalink/features/encounter/providers/encounter_provider.dart';
 import 'package:sanalink/models/encounter_model.dart';
 
-class EncounterListView extends ConsumerWidget {
+class EncounterListView extends ConsumerStatefulWidget {
   const EncounterListView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EncounterListView> createState() => _EncounterListViewState();
+}
+
+class _EncounterListViewState extends ConsumerState<EncounterListView> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<EncounterModel> _filter(List<EncounterModel> all) {
+    if (_query.isEmpty) return all;
+    final q = _query.toLowerCase();
+    return all.where((e) =>
+        e.patientName.toLowerCase().contains(q) ||
+        e.doctorName.toLowerCase().contains(q) ||
+        e.chiefComplaint.toLowerCase().contains(q) ||
+        e.encounterNumber.toLowerCase().contains(q) ||
+        e.status.toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final encountersState = ref.watch(encounterProvider);
     final authState = ref.watch(authServiceProvider);
     final role = authState.value?.user?.role;
@@ -23,38 +48,73 @@ class EncounterListView extends ConsumerWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      body: encountersState.when(
-        data: (encounters) {
-          if (encounters.isEmpty) {
-            return const Center(child: Text('Aucune consultation trouvée.'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(encounterProvider);
-            },
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth > 800) {
-                  return _buildDataTable(context, ref, encounters);
-                } else {
-                  return _buildCardGrid(context, ref, encounters);
-                }
-              },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Rechercher par patient, médecin, motif, statut…',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+              onChanged: (v) => setState(() => _query = v.trim()),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text(
-            'Erreur lors du chargement:\n$error',
-            style: const TextStyle(color: Colors.red),
-            textAlign: TextAlign.center,
           ),
-        ),
+          Expanded(
+            child: encountersState.when(
+              data: (encounters) {
+                final filtered = _filter(encounters);
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Text(_query.isEmpty
+                        ? 'Aucune consultation trouvée.'
+                        : 'Aucun résultat pour "$_query".'),
+                  );
+                }
+                return RefreshIndicator(
+                  onRefresh: () async => ref.invalidate(encounterProvider),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth > 800) {
+                        return _buildDataTable(context, filtered);
+                      } else {
+                        return _buildCardGrid(context, filtered);
+                      }
+                    },
+                  ),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Text(
+                  'Erreur lors du chargement:\n$error',
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: role == 'Doctor'
           ? FloatingActionButton.extended(
-              onPressed: () => _showCreateDialog(context, ref),
+              onPressed: () => _showCreateDialog(context),
               label: const Text('Nouvelle consultation'),
               icon: const Icon(Icons.add),
             )
@@ -62,7 +122,7 @@ class EncounterListView extends ConsumerWidget {
     );
   }
 
-  void _showCreateDialog(BuildContext context, WidgetRef ref) {
+  void _showCreateDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => const EncounterCreateDialog(),
@@ -71,7 +131,6 @@ class EncounterListView extends ConsumerWidget {
 
   Widget _buildDataTable(
     BuildContext context,
-    WidgetRef ref,
     List<EncounterModel> encounters,
   ) {
     return SingleChildScrollView(
@@ -131,7 +190,7 @@ class EncounterListView extends ConsumerWidget {
                   DataCell(Text(enc.doctorName)),
                   DataCell(Text(enc.chiefComplaint)),
                   DataCell(_buildStatusBadge(enc.status)),
-                  DataCell(_buildActionDropdown(ref, enc)),
+                  DataCell(_buildActionDropdown(enc)),
                 ],
               );
             }).toList(),
@@ -143,7 +202,6 @@ class EncounterListView extends ConsumerWidget {
 
   Widget _buildCardGrid(
     BuildContext context,
-    WidgetRef ref,
     List<EncounterModel> encounters,
   ) {
     return ListView.builder(
@@ -208,7 +266,7 @@ class EncounterListView extends ConsumerWidget {
                   children: [
                     const Text('Modifier le statut: '),
                     const SizedBox(width: 12),
-                    _buildActionDropdown(ref, enc),
+                    _buildActionDropdown(enc),
                   ],
                 ),
               ],
@@ -258,7 +316,7 @@ class EncounterListView extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionDropdown(WidgetRef ref, EncounterModel encounter) {
+  Widget _buildActionDropdown(EncounterModel encounter) {
     return DropdownButton<String>(
       value: encounter.status,
       icon: const Icon(Icons.arrow_drop_down),

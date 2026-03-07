@@ -5,57 +5,113 @@ import 'package:sanalink/models/encounter_model.dart';
 import 'package:sanalink/theme/app_theme.dart';
 import 'package:sanalink/features/patient/presentation/patient_dossier_view.dart';
 
-class DoctorConsultationScreen extends ConsumerWidget {
+class DoctorConsultationScreen extends ConsumerStatefulWidget {
   const DoctorConsultationScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DoctorConsultationScreen> createState() =>
+      _DoctorConsultationScreenState();
+}
+
+class _DoctorConsultationScreenState
+    extends ConsumerState<DoctorConsultationScreen> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<EncounterModel> _filter(List<EncounterModel> all) {
+    if (_query.isEmpty) return all;
+    final q = _query.toLowerCase();
+    return all.where((e) =>
+        e.patientName.toLowerCase().contains(q) ||
+        e.chiefComplaint.toLowerCase().contains(q) ||
+        e.encounterNumber.toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final consultationsState = ref.watch(consultationListProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Consultations Médicales (En cours)')),
-      body: consultationsState.when(
-        data: (encounters) => _buildList(context, ref, encounters),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Erreur: $err')),
-      ),
-    );
-  }
-
-  Widget _buildList(
-    BuildContext context,
-    WidgetRef ref,
-    List<EncounterModel> encounters,
-  ) {
-    if (encounters.isEmpty) {
-      return const Center(
-        child: Text('Aucun patient en attente de consultation.'),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(24),
-      itemCount: encounters.length,
-      itemBuilder: (context, index) {
-        final enc = encounters[index];
-        return Card(
-          child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: AppTheme.primaryColor,
-              child: Icon(Icons.medical_services, color: Colors.white),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Rechercher par patient, motif, N° consultation…',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+              onChanged: (v) => setState(() => _query = v.trim()),
             ),
-            title: Text(
-              enc.patientName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              'Motif: ${enc.chiefComplaint}\nN°: ${enc.encounterNumber}',
-            ),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => _openDossier(context, enc),
           ),
-        );
-      },
+          Expanded(
+            child: consultationsState.when(
+              data: (encounters) {
+                final filtered = _filter(encounters);
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Text(_query.isEmpty
+                        ? 'Aucun patient en attente de consultation.'
+                        : 'Aucun résultat pour "$_query".'),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final enc = filtered[index];
+                    return Card(
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: AppTheme.primaryColor,
+                          child: Icon(Icons.medical_services,
+                              color: Colors.white),
+                        ),
+                        title: Text(enc.patientName,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          'Motif: ${enc.chiefComplaint}\nN°: ${enc.encounterNumber}',
+                        ),
+                        trailing:
+                            const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () => _openDossier(context, enc),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (err, stack) =>
+                  Center(child: Text('Erreur: $err')),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

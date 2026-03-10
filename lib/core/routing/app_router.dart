@@ -12,6 +12,7 @@ import 'package:sanalink/features/clinical/presentation/nurse_triage_screen.dart
 import 'package:sanalink/features/clinical/presentation/doctor_consultation_screen.dart';
 import 'package:sanalink/features/laboratory/presentation/lab_order_list_view.dart';
 import 'package:sanalink/features/pharmacy/presentation/pharmacy_dashboard.dart';
+import 'package:sanalink/features/appointments/presentation/appointment_list_view.dart';
 import 'package:sanalink/models/encounter_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -122,6 +123,11 @@ GoRouter appRouter(Ref ref) {
           GoRoute(
             path: '/doctor/consultations',
             builder: (context, state) => const DoctorConsultationScreen(),
+          ),
+          // Rendez-vous
+          GoRoute(
+            path: '/appointments',
+            builder: (context, state) => const AppointmentListView(),
           ),
           // Laboratoire & pharmacie
           GoRoute(

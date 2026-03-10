@@ -118,6 +118,12 @@ class MainLayout extends ConsumerWidget {
         icon: Icons.dashboard,
         route: '/dashboard',
       ),
+      if (role == 'Doctor' || role == 'Nurse' || role == 'Admin' || role == 'Accueil')
+        _NavItem(
+          label: 'Rendez-vous',
+          icon: Icons.event,
+          route: '/appointments',
+        ),
       if (role == 'Admin' || role == 'DAF' || role == 'Accueil')
         _NavItem(
           label: 'Consultations',

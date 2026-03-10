@@ -302,17 +302,17 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
   void _confirmCancel(AppointmentModel a) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Annuler le rendez-vous ?'),
         content:
             Text('Confirmer l\'annulation du RDV de ${a.patientName} ?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Non')),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.of(dialogContext).pop();
               ref.read(appointmentListProvider.notifier).cancel(a.id);
             },
             child:

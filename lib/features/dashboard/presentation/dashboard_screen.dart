@@ -174,13 +174,13 @@ class DashboardScreen extends ConsumerWidget {
           childAspectRatio: 1.5,
           children: [
             _StatCard(
-              title: 'Total Consultations',
+              title: 'Total Rendez-vous',
               value: '${analytics.totalAppointments}',
               icon: Icons.calendar_month,
               color: AppTheme.primaryColor,
             ),
             _StatCard(
-              title: 'Rendez-vous programmés',
+              title: 'Rendez-vous planifiés',
               value: '${analytics.scheduled}',
               icon: Icons.people_outline,
               color: Colors.orange,

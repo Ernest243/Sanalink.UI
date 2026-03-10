@@ -80,12 +80,16 @@ Future<StaffCount> activeStaffCount(Ref ref) async {
 @riverpod
 Future<List<EncounterModel>> recentEncounters(Ref ref) async {
   final dio = ref.read(dioProvider);
-  final response = await dio.get('Encounter');
-  final data = response.data as List;
-  return data
-      .take(5)
-      .map((e) => EncounterModel.fromJson(e))
-      .toList();
+  try {
+    final response = await dio.get('Encounter');
+    final data = response.data as List;
+    return data
+        .take(5)
+        .map((e) => EncounterModel.fromJson(e))
+        .toList();
+  } catch (_) {
+    return [];
+  }
 }
 
 class EncounterAnalytics {

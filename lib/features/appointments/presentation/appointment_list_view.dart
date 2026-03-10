@@ -4,11 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sanalink/core/auth/auth_service.dart';
 import 'package:sanalink/core/network/dio_client.dart';
-import 'package:sanalink/features/admin/providers/admin_providers.dart';
 import 'package:sanalink/features/appointments/providers/appointment_provider.dart';
 import 'package:sanalink/models/appointment_model.dart';
-import 'package:sanalink/models/staff_user_model.dart';
 import 'package:sanalink/theme/app_theme.dart';
+
+/// Provider that fetches the list of active doctors from GET /Auth/doctors.
+/// Accessible to all authenticated roles (Doctor, Nurse, Admin, Accueil…).
+final doctorsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final dio = ref.watch(dioProvider);
+  final response = await dio.get('/Auth/doctors');
+  return (response.data as List).cast<Map<String, dynamic>>();
+});
+
+// ─────────────────────────────────────────────────────────
+//  APPOINTMENT LIST
+// ─────────────────────────────────────────────────────────
 
 class AppointmentListView extends ConsumerStatefulWidget {
   const AppointmentListView({super.key});
@@ -116,14 +127,16 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
           ),
         ],
       ),
-      floatingActionButton:
-          (role == 'Doctor' || role == 'Nurse' || role == 'Admin' || role == 'Accueil')
-              ? FloatingActionButton.extended(
-                  onPressed: () => _showCreateDialog(context),
-                  label: const Text('Nouveau rendez-vous'),
-                  icon: const Icon(Icons.add),
-                )
-              : null,
+      floatingActionButton: (role == 'Doctor' ||
+              role == 'Nurse' ||
+              role == 'Admin' ||
+              role == 'Accueil')
+          ? FloatingActionButton.extended(
+              onPressed: () => _showCreateDialog(context),
+              label: const Text('Nouveau rendez-vous'),
+              icon: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
@@ -131,6 +144,13 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
     showDialog(
       context: context,
       builder: (_) => const AppointmentCreateDialog(),
+    );
+  }
+
+  void _showDetailDialog(BuildContext context, AppointmentModel a, String role) {
+    showDialog(
+      context: context,
+      builder: (_) => AppointmentDetailDialog(appointment: a, role: role),
     );
   }
 
@@ -163,7 +183,9 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
   }
 
   Widget _buildDataTable(
-      BuildContext context, List<AppointmentModel> appointments, String role) {
+      BuildContext context,
+      List<AppointmentModel> appointments,
+      String role) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Card(
@@ -178,7 +200,7 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
                   label: Text('Médecin',
                       style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(
-                  label: Text('Date',
+                  label: Text('Date & Heure',
                       style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(
                   label: Text('Motif',
@@ -191,19 +213,27 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
                       style: TextStyle(fontWeight: FontWeight.bold))),
             ],
             rows: appointments.map((a) {
-              return DataRow(cells: [
-                DataCell(Text(a.patientName,
-                    style: const TextStyle(fontWeight: FontWeight.w600))),
-                DataCell(Text(a.doctorName)),
-                DataCell(Text(
-                    '${a.date.day.toString().padLeft(2, '0')}/${a.date.month.toString().padLeft(2, '0')}/${a.date.year} ${a.date.hour.toString().padLeft(2, '0')}:${a.date.minute.toString().padLeft(2, '0')}')),
-                DataCell(Text(a.reason,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1),
-                    showEditIcon: false),
-                DataCell(_buildStatusBadge(a.status)),
-                DataCell(_buildActionsButton(a, role)),
-              ]);
+              return DataRow(
+                onSelectChanged: (_) =>
+                    _showDetailDialog(context, a, role),
+                cells: [
+                  DataCell(Text(a.patientName,
+                      style:
+                          const TextStyle(fontWeight: FontWeight.w600))),
+                  DataCell(Text(a.doctorName)),
+                  DataCell(Text(
+                      '${a.date.day.toString().padLeft(2, '0')}/${a.date.month.toString().padLeft(2, '0')}/${a.date.year}  ${a.date.hour.toString().padLeft(2, '0')}:${a.date.minute.toString().padLeft(2, '0')}')),
+                  DataCell(
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 200),
+                      child: Text(a.reason,
+                          overflow: TextOverflow.ellipsis, maxLines: 1),
+                    ),
+                  ),
+                  DataCell(_buildStatusBadge(a.status)),
+                  DataCell(_buildActionsButton(a, role)),
+                ],
+              );
             }).toList(),
           ),
         ),
@@ -212,7 +242,9 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
   }
 
   Widget _buildCardList(
-      BuildContext context, List<AppointmentModel> appointments, String role) {
+      BuildContext context,
+      List<AppointmentModel> appointments,
+      String role) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: appointments.length,
@@ -220,41 +252,34 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
         final a = appointments[i];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(a.patientName,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
-                    _buildStatusBadge(a.status),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text('Médecin: ${a.doctorName}',
-                    style: const TextStyle(color: Colors.grey)),
-                Text(
-                    'Date: ${a.date.day.toString().padLeft(2, '0')}/${a.date.month.toString().padLeft(2, '0')}/${a.date.year}'),
-                Text('Motif: ${a.reason}'),
-                if (a.status == 'Scheduled' &&
-                    (role == 'Doctor' ||
-                        role == 'Admin' ||
-                        role == 'Accueil'))
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.cancel_outlined,
-                          color: Colors.red, size: 18),
-                      label: const Text('Annuler',
-                          style: TextStyle(color: Colors.red)),
-                      onPressed: () => _confirmCancel(a),
-                    ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _showDetailDialog(context, a, role),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(a.patientName,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16)),
+                      ),
+                      _buildStatusBadge(a.status),
+                    ],
                   ),
-              ],
+                  const SizedBox(height: 8),
+                  Text('Médecin: ${a.doctorName}',
+                      style: const TextStyle(color: Colors.grey)),
+                  Text(
+                      'Date: ${a.date.day.toString().padLeft(2, '0')}/${a.date.month.toString().padLeft(2, '0')}/${a.date.year}  ${a.date.hour.toString().padLeft(2, '0')}:${a.date.minute.toString().padLeft(2, '0')}'),
+                  Text('Motif: ${a.reason}'),
+                ],
+              ),
             ),
           ),
         );
@@ -298,6 +323,225 @@ class _AppointmentListViewState extends ConsumerState<AppointmentListView> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────
+//  APPOINTMENT DETAIL / EDIT DIALOG
+// ─────────────────────────────────────────────────────────
+
+class AppointmentDetailDialog extends ConsumerStatefulWidget {
+  final AppointmentModel appointment;
+  final String role;
+
+  const AppointmentDetailDialog(
+      {super.key, required this.appointment, required this.role});
+
+  @override
+  ConsumerState<AppointmentDetailDialog> createState() =>
+      _AppointmentDetailDialogState();
+}
+
+class _AppointmentDetailDialogState
+    extends ConsumerState<AppointmentDetailDialog> {
+  late TextEditingController _reasonController;
+  late DateTime _selectedDate;
+  late TimeOfDay _selectedTime;
+  bool _editing = false;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.appointment;
+    _reasonController = TextEditingController(text: a.reason);
+    _selectedDate = a.date;
+    _selectedTime = TimeOfDay(hour: a.date.hour, minute: a.date.minute);
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  bool get _canEdit =>
+      widget.appointment.status == 'Scheduled' &&
+      (widget.role == 'Doctor' ||
+          widget.role == 'Admin' ||
+          widget.role == 'Accueil');
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickTime() async {
+    final picked =
+        await showTimePicker(context: context, initialTime: _selectedTime);
+    if (picked != null) setState(() => _selectedTime = picked);
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final newDate = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      );
+      final dio = ref.read(dioProvider);
+      await dio.put('/Appointment/${widget.appointment.id}', data: {
+        'date': newDate.toUtc().toIso8601String(),
+        'reason': _reasonController.text.trim(),
+        'status': widget.appointment.status,
+      });
+      ref.invalidate(appointmentListProvider);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Erreur: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.appointment;
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.event, color: AppTheme.primaryColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Rendez-vous — ${a.patientName}',
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+          if (_canEdit && !_editing)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Modifier',
+              onPressed: () => setState(() => _editing = true),
+            ),
+        ],
+      ),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _infoRow(Icons.person_outline, 'Patient', a.patientName),
+            _infoRow(Icons.medical_services_outlined, 'Médecin', a.doctorName),
+            const Divider(height: 20),
+            if (!_editing) ...[
+              _infoRow(
+                Icons.calendar_today_outlined,
+                'Date',
+                '${a.date.day.toString().padLeft(2, '0')}/${a.date.month.toString().padLeft(2, '0')}/${a.date.year}  ${a.date.hour.toString().padLeft(2, '0')}:${a.date.minute.toString().padLeft(2, '0')}',
+              ),
+              _infoRow(Icons.notes_outlined, 'Motif', a.reason),
+              _infoRow(Icons.info_outline, 'Statut', _statusLabel(a.status)),
+            ] else ...[
+              // Editable fields
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.calendar_today, size: 16),
+                      label: Text(
+                          '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}'),
+                      onPressed: _pickDate,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.access_time, size: 16),
+                      label: Text(
+                          '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}'),
+                      onPressed: _pickTime,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _reasonController,
+                decoration: const InputDecoration(
+                    labelText: 'Motif', border: OutlineInputBorder()),
+                maxLines: 2,
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        if (!_editing) ...[
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fermer')),
+        ] else ...[
+          TextButton(
+            onPressed: _saving
+                ? null
+                : () => setState(() => _editing = false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Text('Enregistrer'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AppTheme.primaryColor),
+          const SizedBox(width: 10),
+          Text('$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+  String _statusLabel(String status) => switch (status) {
+        'Scheduled' => 'Planifié',
+        'Completed' => 'Terminé',
+        'Cancelled' => 'Annulé',
+        _ => status,
+      };
+}
+
+// ─────────────────────────────────────────────────────────
+//  CREATE DIALOG
+// ─────────────────────────────────────────────────────────
 
 class AppointmentCreateDialog extends ConsumerStatefulWidget {
   const AppointmentCreateDialog({super.key});
@@ -415,7 +659,8 @@ class _AppointmentCreateDialogState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Erreur: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -423,7 +668,7 @@ class _AppointmentCreateDialogState
 
   @override
   Widget build(BuildContext context) {
-    final staffAsync = ref.watch(staffListProvider);
+    final doctorsAsync = ref.watch(doctorsProvider);
 
     return AlertDialog(
       title: const Text('Nouveau rendez-vous'),
@@ -483,32 +728,37 @@ class _AppointmentCreateDialogState
                 ],
                 const SizedBox(height: 12),
 
-                // Doctor dropdown
-                staffAsync.when(
-                  data: (staff) {
-                    final doctors =
-                        staff.where((s) => s.role == 'Doctor').toList();
-                    return DropdownButtonFormField<String>(
-                      key: ValueKey(_selectedDoctorId),
-                      initialValue: _selectedDoctorId,
-                      decoration:
-                          const InputDecoration(labelText: 'Médecin'),
-                      items: doctors
-                          .map((d) => DropdownMenuItem(
-                                value: d.id,
-                                child: Text(d.fullName),
-                              ))
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => _selectedDoctorId = v),
-                      validator: (v) =>
-                          v == null ? 'Champ requis' : null,
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (_, __) =>
-                      const Text('Impossible de charger les médecins'),
+                // Doctor dropdown — uses /Auth/doctors (all roles can access)
+                doctorsAsync.when(
+                  data: (doctors) => DropdownButtonFormField<String>(
+                    key: ValueKey(_selectedDoctorId),
+                    initialValue: _selectedDoctorId,
+                    decoration: const InputDecoration(labelText: 'Médecin'),
+                    items: doctors
+                        .map((d) => DropdownMenuItem(
+                              value: d['id'] as String,
+                              child: Text(
+                                  d['fullName'] as String? ?? ''),
+                            ))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _selectedDoctorId = v),
+                    validator: (v) =>
+                        v == null ? 'Champ requis' : null,
+                  ),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Row(children: [
+                      SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                      SizedBox(width: 10),
+                      Text('Chargement des médecins…'),
+                    ]),
+                  ),
+                  error: (e, _) => Text('Erreur chargement médecins: $e',
+                      style: const TextStyle(color: Colors.red)),
                 ),
                 const SizedBox(height: 12),
 
@@ -539,8 +789,8 @@ class _AppointmentCreateDialogState
                 // Reason
                 TextFormField(
                   controller: _reasonController,
-                  decoration:
-                      const InputDecoration(labelText: 'Motif du rendez-vous'),
+                  decoration: const InputDecoration(
+                      labelText: 'Motif du rendez-vous'),
                   maxLines: 2,
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Champ requis' : null,

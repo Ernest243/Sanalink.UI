@@ -12,30 +12,30 @@ class AdminRepository {
 
   AdminRepository(this._dio);
 
-  /// Récupère la liste de tout le personnel
+  /// Récupère la liste de tout le personnel.
   Future<List<StaffUserModel>> getAllStaff() async {
-    final response = await _dio.get('/Auth/staff');
+    final response = await _dio.get('Auth/staff');
     return (response.data as List)
         .map((e) => StaffUserModel.fromJson(e))
         .toList();
   }
 
-  /// Enregistre un nouveau membre du personnel
+  /// Enregistre un nouveau membre du personnel.
   Future<void> registerStaff(StaffRegistrationRequest request) async {
-    await _dio.post('/Auth/register-staff', data: request.toJson());
+    await _dio.post('Auth/register-staff', data: request.toJson());
   }
 
-  /// Récupère la liste des établissements
+  /// Récupère la liste des établissements.
   Future<List<FacilityModel>> getFacilities() async {
-    final response = await _dio.get('/Facility');
+    final response = await _dio.get('Facility');
     return (response.data as List)
         .map((e) => FacilityModel.fromJson(e))
         .toList();
   }
 
-  /// Crée un nouvel établissement
+  /// Crée un nouvel établissement.
   Future<void> createFacility(Map<String, dynamic> data) async {
-    await _dio.post('/Facility', data: data);
+    await _dio.post('Facility', data: data);
   }
 }
 

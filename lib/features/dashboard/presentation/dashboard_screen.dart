@@ -26,8 +26,10 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: () {
               ref.invalidate(appointmentAnalyticsProvider);
               ref.invalidate(activeStaffCountProvider);
-              ref.invalidate(recentEncountersProvider);
-              ref.invalidate(encounterAnalyticsProvider);
+              // Invalidating allEncountersProvider cascades to
+              // recentEncountersProvider and encounterAnalyticsProvider
+              // automatically — one network call instead of two.
+              ref.invalidate(allEncountersProvider);
               ref.invalidate(appointmentsPerDayProvider);
             },
           ),

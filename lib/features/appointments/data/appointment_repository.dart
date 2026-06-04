@@ -11,7 +11,7 @@ class AppointmentRepository {
   AppointmentRepository(this._dio);
 
   Future<List<AppointmentModel>> getAppointments() async {
-    final response = await _dio.get('/Appointment');
+    final response = await _dio.get('Appointment');
     return (response.data as List)
         .map((e) => AppointmentModel.fromJson(e))
         .toList();
@@ -23,7 +23,7 @@ class AppointmentRepository {
     required DateTime date,
     required String reason,
   }) async {
-    final response = await _dio.post('/Appointment', data: {
+    final response = await _dio.post('Appointment', data: {
       'patientId': patientId,
       'doctorId': doctorId,
       'date': date.toUtc().toIso8601String(),
@@ -33,7 +33,7 @@ class AppointmentRepository {
   }
 
   Future<void> cancelAppointment(int id) async {
-    await _dio.delete('/Appointment/$id');
+    await _dio.delete('Appointment/$id');
   }
 }
 

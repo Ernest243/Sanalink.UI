@@ -10,28 +10,28 @@ class LabRepository {
 
   LabRepository(this._dio);
 
-  /// Récupère toutes les demandes du laboratoire
+  /// Récupère toutes les demandes de laboratoire.
   Future<List<LabOrderModel>> getLabOrders() async {
-    final response = await _dio.get('/LabOrder');
+    final response = await _dio.get('LabOrder');
     return (response.data as List)
         .map((e) => LabOrderModel.fromJson(e))
         .toList();
   }
 
-  /// Met à jour une demande (résultat et notes)
+  /// Met à jour le résultat et les notes d'une demande.
   Future<void> updateLabOrder(int id, String result, String notes) async {
     await _dio.put(
-      '/LabOrder/$id',
+      'LabOrder/$id',
       data: {'result': result, 'resultNotes': notes},
     );
   }
 
-  /// Change le statut de la demande
+  /// Change le statut d'une demande de laboratoire.
   Future<void> updateStatus(int id, String status) async {
-    await _dio.put('/LabOrder/$id/status', data: {'status': status});
+    await _dio.put('LabOrder/$id/status', data: {'status': status});
   }
 
-  /// Récupère les demandes de labo pour un patient
+  /// Récupère les demandes de laboratoire pour un patient.
   Future<List<LabOrderModel>> getLabOrdersByPatient(int patientId) async {
     final response = await _dio.get('LabOrder/patient/$patientId');
     return (response.data as List)

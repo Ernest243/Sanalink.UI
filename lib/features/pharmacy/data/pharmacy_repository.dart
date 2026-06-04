@@ -11,28 +11,28 @@ class PharmacyRepository {
 
   PharmacyRepository(this._dio);
 
-  /// Récupère les ordonnances
+  /// Récupère toutes les ordonnances.
   Future<List<PrescriptionModel>> getPrescriptions() async {
-    final response = await _dio.get('/Prescriptions');
+    final response = await _dio.get('Prescriptions');
     return (response.data as List)
         .map((e) => PrescriptionModel.fromJson(e))
         .toList();
   }
 
-  /// Dispense un médicament
+  /// Enregistre une dispensation de médicament.
   Future<void> dispenseMedication(PharmacyDispenseCreateRequest request) async {
-    await _dio.post('/PharmacyDispense', data: request.toJson());
+    await _dio.post('PharmacyDispense', data: request.toJson());
   }
 
-  /// Historique des dispensations
+  /// Récupère l'historique des dispensations.
   Future<List<PharmacyDispenseModel>> getDispenseHistory() async {
-    final response = await _dio.get('/PharmacyDispense');
+    final response = await _dio.get('PharmacyDispense');
     return (response.data as List)
         .map((e) => PharmacyDispenseModel.fromJson(e))
         .toList();
   }
 
-  /// Récupère les prescriptions d'un patient
+  /// Récupère les ordonnances d'un patient.
   Future<List<PrescriptionModel>> getPrescriptionsByPatient(
       int patientId) async {
     final response = await _dio.get('Prescriptions/patient/$patientId');
@@ -41,15 +41,14 @@ class PharmacyRepository {
         .toList();
   }
 
-  /// Crée une nouvelle ordonnance (Docteur uniquement)
-  /// POST /api/v1/Prescriptions
+  /// Crée une nouvelle ordonnance (Médecin uniquement).
   Future<PrescriptionModel> createPrescription({
     required int patientId,
     required String medicationName,
     required String dosage,
     required String instructions,
   }) async {
-    final response = await _dio.post('/Prescriptions', data: {
+    final response = await _dio.post('Prescriptions', data: {
       'patientId': patientId,
       'medicationName': medicationName,
       'dosage': dosage,

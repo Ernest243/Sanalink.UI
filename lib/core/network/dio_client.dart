@@ -11,17 +11,23 @@ Dio dio(Ref ref) {
       ? 'https://sanalink-api.onrender.com/api/v1/'
       : 'http://localhost:5189/api/v1/';
 
-  final dio = Dio(
+  // Render free tier can take up to 60 s to wake from cold start.
+  // Development keeps a tight 10 s timeout for fast feedback.
+  final timeout = kReleaseMode
+      ? const Duration(seconds: 60)
+      : const Duration(seconds: 10);
+
+  final instance = Dio(
     BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: timeout,
+      receiveTimeout: timeout,
     ),
   );
 
-  dio.interceptors.add(AuthInterceptor(ref));
+  instance.interceptors.add(AuthInterceptor(ref));
 
-  return dio;
+  return instance;
 }
 
 class AuthInterceptor extends Interceptor {
@@ -30,21 +36,25 @@ class AuthInterceptor extends Interceptor {
   AuthInterceptor(this.ref);
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    /// Injecter le jeton s'il est disponible
-    final authState = ref.read(authServiceProvider).value;
-    final token = authState?.token;
-
-    if (token != null && token.isNotEmpty) {
-      options.headers['Authorization'] = 'Bearer $token';
+  Future<void> onRequest(
+      RequestOptions options, RequestInterceptorHandler handler) async {
+    try {
+      // Await the auth future so we never send a request without a token
+      // while SharedPreferences is still loading on cold start.
+      final authState = await ref.read(authServiceProvider.future);
+      final token = authState.token;
+      if (token != null && token.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (_) {
+      // Auth unavailable — proceed without header; onError handles 401.
     }
-    super.onRequest(options, handler);
+    handler.next(options);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (err.response?.statusCode == 401) {
-      /// Déclencher la déconnexion via le service d'authentification
       ref.read(authServiceProvider.notifier).logout();
     }
     super.onError(err, handler);

@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sanalink/core/auth/auth_service.dart';
 import 'package:sanalink/features/admin/providers/admin_providers.dart';
 import 'package:sanalink/features/dashboard/providers/dashboard_providers.dart';
 import 'package:sanalink/theme/app_theme.dart';
@@ -13,7 +14,9 @@ class AnalyticsChartsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final encounterAsync = ref.watch(encounterAnalyticsProvider);
     final perDayAsync = ref.watch(appointmentsPerDayProvider);
-    final staffAsync = ref.watch(staffListProvider);
+    final role = ref.watch(authServiceProvider).value?.user?.role;
+    final isAdmin = role == 'Admin';
+    final staffAsync = isAdmin ? ref.watch(staffListProvider) : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,22 +75,21 @@ class AnalyticsChartsSection extends ConsumerWidget {
           ]);
         }),
 
-        const SizedBox(height: 16),
-
-        // ── Row 2: staff by role ────────────────────────────────────────────
-        _ChartCard(
-          title: 'Personnel par rôle',
-          icon: Icons.people,
-          child: staffAsync.when(
-            data: (staff) => staff.isEmpty
-                ? _emptyWidget('Aucun personnel')
-                : _StaffByRoleBarChart(staff: staff
-                    .map((s) => s.role)
-                    .toList()),
-            loading: _loadingWidget,
-            error: (_, __) => _emptyWidget('Données indisponibles'),
+        if (isAdmin) ...[
+          const SizedBox(height: 16),
+          // ── Row 2: staff by role (Admin only) ──────────────────────────────
+          _ChartCard(
+            title: 'Personnel par rôle',
+            icon: Icons.people,
+            child: staffAsync!.when(
+              data: (staff) => staff.isEmpty
+                  ? _emptyWidget('Aucun personnel')
+                  : _StaffByRoleBarChart(staff: staff.map((s) => s.role).toList()),
+              loading: _loadingWidget,
+              error: (_, __) => _emptyWidget('Données indisponibles'),
+            ),
           ),
-        ),
+        ],
 
         const SizedBox(height: 16),
 

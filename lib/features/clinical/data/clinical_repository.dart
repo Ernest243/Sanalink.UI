@@ -11,10 +11,10 @@ class ClinicalRepository {
 
   ClinicalRepository(this._dio);
 
-  /// Récupère par statut (Encounter)
+  /// Récupère les consultations, filtrées par statut si fourni.
   Future<List<EncounterModel>> getEncounters({String? status}) async {
     final response = await _dio.get(
-      '/Encounter',
+      'Encounter',
       queryParameters: {if (status != null) 'status': status},
     );
     return (response.data as List)
@@ -22,50 +22,45 @@ class ClinicalRepository {
         .toList();
   }
 
-  /// Met à jour les constantes vitale (Encounter).
-  /// [vitals] doit contenir les clés 'bloodPressure', 'heartRate', 'temperature'.
-  /// [nurseId] est l'identifiant de l'infirmier effectuant la mesure.
+  /// Met à jour les constantes vitales d'une consultation.
   Future<void> updateVitals(
     int id,
     Map<String, dynamic> vitals, {
     String? nurseId,
   }) async {
-    // Sérialise le map vers la chaîne attendue par le backend et le parser du dossier
     final vitalsStr =
         'TA: ${vitals['bloodPressure']}, FC: ${vitals['heartRate']}, Temp: ${vitals['temperature']}C';
-    await _dio.put('/Encounter/$id', data: {
+    await _dio.put('Encounter/$id', data: {
       'vitals': vitalsStr,
       if (nurseId != null) 'nurseId': nurseId,
     });
   }
 
-  /// Change le statut (Encounter)
+  /// Change le statut d'une consultation.
   Future<void> updateStatus(int id, String status) async {
-    await _dio.put('/Encounter/$id/status', data: {'status': status});
+    await _dio.put('Encounter/$id/status', data: {'status': status});
   }
 
-  /// Sauvegarde le diagnostic et les notes (Docteur)
+  /// Sauvegarde le diagnostic et les notes cliniques.
   Future<void> saveConsultation(int id, String diagnosis, String notes) async {
     await _dio.put(
-      '/Encounter/$id',
+      'Encounter/$id',
       data: {'diagnosis': diagnosis, 'clinicalNotes': notes},
     );
   }
 
-  /// Récupère les notes cliniques d'un patient
-  /// GET /api/v1/Notes/patient/{patientId}
+  /// Récupère les notes cliniques d'un patient.
   Future<List<NoteModel>> getPatientNotes(int patientId) async {
-    final response = await _dio.get('/Notes/patient/$patientId');
+    final response = await _dio.get('Notes/patient/$patientId');
     return (response.data as List)
         .map((e) => NoteModel.fromJson(e))
         .toList();
   }
 
-  /// Ajoute une note clinique pour un patient
-  /// POST /api/v1/Notes
+  /// Ajoute une note clinique pour un patient.
   Future<void> addNote(int patientId, String content) async {
     await _dio.post(
-      '/Notes',
+      'Notes',
       data: {'patientId': patientId, 'content': content},
     );
   }

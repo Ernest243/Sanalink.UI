@@ -36,7 +36,8 @@ class EncounterRepository {
 
   Future<void> updateStatus(int id, String status) async {
     final dio = ref.read(dioProvider);
-    await dio.put('Encounter/$id/status', data: '"$status"');
+    // Must send a JSON object matching StatusUpdateDto { "status": "..." }
+    await dio.put('Encounter/$id/status', data: {'status': status});
   }
 
   Future<EncounterModel> createEncounter(
